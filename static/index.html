@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>Instagram Follow Tracker & AI Intelligence</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            ig: {
+              black: '#000000',
+              darkBg: '#0b0b0b',
+              darkCard: '#121212',
+              darkBorder: '#262626',
+              darkHover: '#1a1a1a',
+              lightBg: '#fafafa',
+              lightCard: '#ffffff',
+              lightBorder: '#dbdbdb',
+              lightHover: '#f2f2f2',
+              primary: '#0095f6',
+              primaryHover: '#1877f2',
+              red: '#ed4956',
+              green: '#20c997',
+              grayText: '#8e8e8e',
+              darkText: '#262626',
+              whiteText: '#f5f5f5'
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="bg-ig-lightBg dark:bg-ig-black text-ig-darkText dark:text-ig-whiteText min-h-screen transition-colors duration-200 antialiased selection:bg-ig-primary selection:text-white">
+
+  <div class="flex min-h-screen">
+    
+    <!-- LEFT SIDEBAR (Identical to Instagram Web) -->
+    <aside class="w-20 md:w-64 border-r border-ig-lightBorder dark:border-ig-darkBorder h-screen sticky top-0 flex flex-col justify-between p-3 md:p-5 bg-ig-lightCard dark:bg-ig-black z-30 transition-all">
+      <div class="flex flex-col gap-6">
+        <!-- Instagram Logo / Wordmark -->
+        <div class="flex items-center gap-3 px-2 py-4 cursor-pointer" onclick="resetToHome()">
+          <div class="instagram-gradient-icon w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-md">
+            <i data-lucide="instagram" class="w-5 h-5"></i>
+          </div>
+          <div class="hidden md:flex flex-col">
+            <span class="font-bold text-lg tracking-tight font-serif italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 via-pink-500 to-purple-600">
+              InstaTracker
+            </span>
+            <span class="text-[10px] text-ig-grayText font-sans tracking-widest uppercase -mt-1 font-semibold">
+              AI Follow Engine
+            </span>
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="flex flex-col gap-1.5 font-medium text-sm">
+          <button onclick="switchMainView('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+            <i data-lucide="home" class="w-6 h-6"></i>
+            <span class="hidden md:inline">Dashboard</span>
+          </button>
+          
+          <button onclick="openTrackModal()" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+            <i data-lucide="search" class="w-6 h-6"></i>
+            <span class="hidden md:inline">Rastrear Perfil</span>
+          </button>
+
+          <button onclick="switchMainView('history')" id="nav-history" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+            <i data-lucide="users" class="w-6 h-6"></i>
+            <span class="hidden md:inline">Perfis Salvos</span>
+          </button>
+
+          <button onclick="switchTab('tab-ai')" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition group">
+            <div class="w-6 h-6 rounded-md flex items-center justify-center text-purple-500 group-hover:scale-110 transition">
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <span class="hidden md:inline bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent font-semibold">
+              Inteligência Gemini
+            </span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Bottom Options (Settings & Theme) -->
+      <div class="flex flex-col gap-1.5 pt-4 border-t border-ig-lightBorder dark:border-ig-darkBorder">
+        <button onclick="toggleTheme()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+          <i id="theme-icon" data-lucide="sun" class="w-6 h-6"></i>
+          <span class="hidden md:inline" id="theme-text">Modo Claro</span>
+        </button>
+
+        <button onclick="openExtensionModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm text-emerald-500">
+          <i data-lucide="puzzle" class="w-6 h-6"></i>
+          <span class="hidden md:inline font-semibold">Extensão Chrome</span>
+        </button>
+
+        <button onclick="openSettingsModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+          <i data-lucide="settings" class="w-6 h-6"></i>
+          <span class="hidden md:inline">Configurações</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col min-w-0 max-w-5xl mx-auto px-4 md:px-8 py-6">
+      
+      <!-- TOP SEARCH BAR -->
+      <header class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 mb-6 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+        <div class="relative w-full sm:w-96">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-ig-grayText">
+            <i data-lucide="search" class="w-4 h-4"></i>
+          </div>
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Digite @usuario ou link do perfil..." 
+            class="w-full pl-10 pr-4 py-2 text-sm rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none transition"
+            onkeydown="if(event.key === 'Enter') handleSearchSubmit()"
+          />
+        </div>
+
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <!-- Toggle Mode Badge -->
+          <div class="flex items-center gap-2 bg-ig-lightHover dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder px-3 py-1.5 rounded-full text-xs">
+            <span class="text-ig-grayText font-medium">Modo:</span>
+            <button id="mode-toggle-btn" onclick="toggleScanMode()" class="font-semibold text-emerald-500 hover:underline flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="mode-text">Simulação (Demo)</span>
+            </button>
+          </div>
+
+          <!-- Fast Scan Button -->
+          <button onclick="handleSearchSubmit()" id="btn-scan-main" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm transition active:scale-95 disabled:opacity-50">
+            <i data-lucide="refresh-cw" id="scan-spinner" class="w-4 h-4"></i>
+            <span>Escanear</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- PROFILE BANNER SECTION (Instagram Profile Header Style) -->
+      <section id="profile-header-section" class="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-12 pb-8 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+        
+        <!-- Story Avatar Ring -->
+        <div class="relative group">
+          <div id="avatar-ring" class="story-ring p-1 rounded-full cursor-pointer">
+            <div class="bg-white dark:bg-black p-1 rounded-full">
+              <img 
+                id="profile-avatar" 
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80" 
+                alt="Avatar" 
+                referrerpolicy="no-referrer"
+                onerror="handleAvatarError(this)"
+                class="w-24 h-24 md:w-36 md:h-36 rounded-full object-cover shadow-inner"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile Details & Action Buttons -->
+        <div class="flex-1 flex flex-col items-center md:items-start text-center md:text-left gap-3">
+          
+          <div class="flex flex-wrap items-center justify-center md:justify-start gap-3">
+            <h1 id="profile-username" class="text-xl md:text-2xl font-semibold tracking-tight">@exemplo</h1>
+            <span id="verified-badge" class="text-ig-primary hidden">
+              <i data-lucide="badge-check" class="w-5 h-5 fill-current text-white inline"></i>
+            </span>
+
+            <div class="flex items-center gap-2 ml-0 md:ml-2">
+              <button onclick="triggerRescan()" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-ig-lightBorder dark:hover:bg-ig-darkBorder transition flex items-center gap-1.5">
+                <i data-lucide="scan" class="w-3.5 h-3.5"></i>
+                Nova Verificação
+              </button>
+              <button onclick="switchTab('tab-ai')" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                Analisar com IA
+              </button>
+            </div>
+          </div>
+
+          <!-- Stats Counters (Instagram Style) -->
+          <div class="flex items-center justify-center md:justify-start gap-8 text-sm my-1">
+            <div><strong id="stat-posts" class="font-semibold">0</strong> <span class="text-ig-grayText">publicações</span></div>
+            <div><strong id="stat-followers" class="font-semibold">0</strong> <span class="text-ig-grayText">seguidores</span></div>
+            <div><strong id="stat-following" class="font-semibold">0</strong> <span class="text-ig-grayText">seguindo</span></div>
+          </div>
+
+          <!-- Bio & Name -->
+          <div>
+            <h2 id="profile-fullname" class="font-semibold text-sm">Nome Completo</h2>
+            <p id="profile-bio" class="text-xs md:text-sm text-ig-grayText whitespace-pre-line mt-0.5 max-w-lg">
+              Descrição da biografia do perfil do Instagram...
+            </p>
+          </div>
+
+          <!-- Snapshot Timestamp Note -->
+          <div class="text-[11px] text-ig-grayText flex items-center gap-1.5 mt-1">
+            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+            <span id="stat-last-scan">Última checagem: Carregando...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- HARMONIC METRICS HUB (2-TIER CLEAN DESIGN) -->
+      <section id="metrics-hub-section" class="my-6 flex flex-col gap-3">
+        
+        <!-- TIER 1: MOVIMENTAÇÕES RECENTES (ÚLTIMA VARREDURA) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          
+          <!-- 1. Novos Seguidores -->
+          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
+              <span>Novos Seguidores</span>
+              <div class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="metric-new-followers" class="text-2xl font-bold text-emerald-500">+0</span>
+              <span class="text-[11px] text-ig-grayText">nesta varredura</span>
+            </div>
+          </div>
+
+          <!-- 2. Deixaram de te Seguir -->
+          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-rose-500/50 transition flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
+              <span>Deixaram de Seguir</span>
+              <div class="w-6 h-6 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="metric-lost-followers" class="text-2xl font-bold text-rose-500">-0</span>
+              <span class="text-[11px] text-ig-grayText">unfollows deles</span>
+            </div>
+          </div>
+
+          <!-- 3. Você Deixou de Seguir -->
+          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-orange-500/50 transition flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
+              <span>Você Deixou de Seguir</span>
+              <div class="w-6 h-6 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="metric-lost-following" class="text-2xl font-bold text-orange-500">-0</span>
+              <span class="text-[11px] text-ig-grayText">unfollows seus</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TIER 2: DIAGNÓSTICO E SAÚDE DA BASE -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          
+          <!-- Amigos Mútuos -->
+          <div onclick="switchTab('tab-mutual')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-cyan-500/50 transition">
+            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
+              <span>Mútuos</span>
+              <i data-lucide="users" class="w-3.5 h-3.5 text-cyan-500"></i>
+            </div>
+            <div class="text-lg font-bold text-cyan-500" id="metric-mutual">0</div>
+          </div>
+
+          <!-- Não te Seguem -->
+          <div onclick="switchTab('tab-not-following-back')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-amber-500/50 transition">
+            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
+              <span>Não Seguem</span>
+              <i data-lucide="user-x" class="w-3.5 h-3.5 text-amber-500"></i>
+            </div>
+            <div class="text-lg font-bold text-amber-500" id="metric-not-following-back">0</div>
+          </div>
+
+          <!-- Fãs -->
+          <div onclick="switchTab('tab-fans')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-purple-500/50 transition">
+            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
+              <span>Seus Fãs</span>
+              <i data-lucide="heart" class="w-3.5 h-3.5 text-purple-500"></i>
+            </div>
+            <div class="text-lg font-bold text-purple-500" id="metric-fans">0</div>
+          </div>
+
+          <!-- Verificados VIP -->
+          <div onclick="switchTab('tab-verified')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-blue-500/50 transition">
+            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
+              <span>Verificados</span>
+              <i data-lucide="badge-check" class="w-3.5 h-3.5 text-blue-500"></i>
+            </div>
+            <div class="text-lg font-bold text-blue-500" id="metric-verified">0</div>
+          </div>
+
+          <!-- Fantasmas / Sem Foto -->
+          <div onclick="switchTab('tab-ghosts')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-zinc-500/50 transition col-span-2 sm:col-span-1">
+            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
+              <span>Fantasmas</span>
+              <i data-lucide="ghost" class="w-3.5 h-3.5 text-zinc-400"></i>
+            </div>
+            <div class="text-lg font-bold text-zinc-400" id="metric-ghosts">0</div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- NAVIGATION TABS (Instagram Profile Tabs) -->
+      <div id="tabs-nav-container" class="border-t border-ig-lightBorder dark:border-ig-darkBorder">
+        <nav class="flex justify-start gap-4 sm:gap-6 -mt-px text-xs font-semibold uppercase tracking-wider text-ig-grayText overflow-x-auto no-scrollbar">
+          
+          <button onclick="switchTab('tab-changes')" id="btn-tab-changes" class="tab-btn active flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+            <span>Mudanças</span>
+          </button>
+
+          <button onclick="switchTab('tab-mutual')" id="btn-tab-mutual" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="users" class="w-3.5 h-3.5 text-cyan-500"></i>
+            <span>Mútuos</span>
+          </button>
+
+          <button onclick="switchTab('tab-not-following-back')" id="btn-tab-not-following-back" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="user-x" class="w-3.5 h-3.5 text-amber-500"></i>
+            <span>Não te Seguem</span>
+          </button>
+
+          <button onclick="switchTab('tab-fans')" id="btn-tab-fans" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="heart" class="w-3.5 h-3.5 text-purple-500"></i>
+            <span>Fãs</span>
+          </button>
+
+          <button onclick="switchTab('tab-verified')" id="btn-tab-verified" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="badge-check" class="w-3.5 h-3.5 text-blue-500"></i>
+            <span>VIP / Selo Azul</span>
+          </button>
+
+          <button onclick="switchTab('tab-ghosts')" id="btn-tab-ghosts" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="ghost" class="w-3.5 h-3.5 text-zinc-400"></i>
+            <span>Fantasmas</span>
+          </button>
+
+          <button onclick="switchTab('tab-chart')" id="btn-tab-chart" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+            <span>Gráfico</span>
+          </button>
+
+          <button onclick="switchTab('tab-ai')" id="btn-tab-ai" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-500"></i>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">Análise IA</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- TAB CONTENTS -->
+      <section class="mt-6">
+        
+        <!-- 1. TAB: MUDANÇAS (3 Colunas de Diffs) -->
+        <div id="tab-changes" class="tab-content">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Novos Seguidores -->
+            <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-4">
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+                <div class="flex items-center gap-2 font-semibold text-xs">
+                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Novos Seguidores</span>
+                  <span id="badge-count-new" class="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-bold">0</span>
+                </div>
+              </div>
+              <div id="list-new-followers" class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
+                <!-- User rows rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Quem Deixou de te Seguir -->
+            <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-4">
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+                <div class="flex items-center gap-2 font-semibold text-xs">
+                  <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                  <span>Deixaram de Seguir</span>
+                  <span id="badge-count-lost" class="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full font-bold">0</span>
+                </div>
+              </div>
+              <div id="list-lost-followers" class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
+                <!-- User rows rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Você Deixou de Seguir -->
+            <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-4">
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+                <div class="flex items-center gap-2 font-semibold text-xs">
+                  <span class="w-2 h-2 rounded-full bg-orange-500"></span>
+                  <span>Você Deixou de Seguir</span>
+                  <span id="badge-count-lost-following" class="text-[10px] bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full font-bold">0</span>
+                </div>
+              </div>
+              <div id="list-lost-following" class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
+                <!-- User rows rendered dynamically -->
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- 2. TAB: AMIGOS MÚTUOS -->
+        <div id="tab-mutual" class="tab-content hidden">
+          <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+              <div>
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                  <i data-lucide="users" class="w-4 h-4 text-cyan-500"></i>
+                  <span>Amigos Mútuos (Conexões Recíprocas)</span>
+                </h3>
+                <p class="text-xs text-ig-grayText mt-0.5">Pessoas que te seguem e você também segue de volta.</p>
+              </div>
+              <div class="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  id="search-mutual" 
+                  placeholder="Filtrar amigos mútuos..." 
+                  oninput="filterReciprocityList('mutual')" 
+                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+            </div>
+            <div id="list-mutual" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. TAB: NÃO TE SEGUEM DE VOLTA -->
+        <div id="tab-not-following-back" class="tab-content hidden">
+          <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+              <div>
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                  <i data-lucide="user-x" class="w-4 h-4 text-amber-500"></i>
+                  <span>Não te Seguem de Volta</span>
+                </h3>
+                <p class="text-xs text-ig-grayText mt-0.5">Perfis que você segue, mas não retribuem o follow.</p>
+              </div>
+              <div class="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  id="search-not-following" 
+                  placeholder="Filtrar contas..." 
+                  oninput="filterReciprocityList('not_following_back')" 
+                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+            </div>
+            <div id="list-not-following-back" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. TAB: FÃS (TE SEGUEM MAS VOCÊ NÃO SEGUE) -->
+        <div id="tab-fans" class="tab-content hidden">
+          <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+              <div>
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                  <i data-lucide="heart" class="w-4 h-4 text-purple-500"></i>
+                  <span>Seus Fãs</span>
+                </h3>
+                <p class="text-xs text-ig-grayText mt-0.5">Seguidores que acompanham você, mas você não segue de volta.</p>
+              </div>
+              <div class="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  id="search-fans" 
+                  placeholder="Filtrar fãs..." 
+                  oninput="filterReciprocityList('fans')" 
+                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+            </div>
+            <div id="list-fans" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. TAB: VERIFICADOS (VIP / SELO AZUL) -->
+        <div id="tab-verified" class="tab-content hidden">
+          <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+              <div>
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                  <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
+                  <span>Seguidores Verificados (VIP)</span>
+                </h3>
+                <p class="text-xs text-ig-grayText mt-0.5">Figuras públicas, criadores e marcas com selo oficial que te seguem.</p>
+              </div>
+              <div class="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  id="search-verified" 
+                  placeholder="Filtrar verificados..." 
+                  oninput="filterReciprocityList('verified')" 
+                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+            </div>
+            <div id="list-verified" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. TAB: FANTASMAS / SEM FOTO -->
+        <div id="tab-ghosts" class="tab-content hidden">
+          <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+              <div>
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                  <i data-lucide="ghost" class="w-4 h-4 text-zinc-400"></i>
+                  <span>Seguidores Fantasmas / Inativos</span>
+                </h3>
+                <p class="text-xs text-ig-grayText mt-0.5">Contas sem foto de perfil ou perfis suspeitos de inatividade.</p>
+              </div>
+              <div class="relative w-full sm:w-64">
+                <input 
+                  type="text" 
+                  id="search-ghosts" 
+                  placeholder="Filtrar contas fantasmas..." 
+                  oninput="filterReciprocityList('ghosts')" 
+                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+            </div>
+            <div id="list-ghosts" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto p-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. TAB: GRÁFICO & EVOLUÇÃO -->
+        <div id="tab-chart" class="tab-content hidden">
+          <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6">
+              <div>
+                <h3 class="font-semibold text-sm">Histórico e Evolução de Seguidores</h3>
+                <p class="text-xs text-ig-grayText mt-0.5">Acompanhe a curva de crescimento a cada varredura registrada.</p>
+              </div>
+              <span class="text-xs bg-ig-lightHover dark:bg-ig-darkHover px-3 py-1 rounded-full text-ig-grayText font-medium">
+                Snapshots SQLite
+              </span>
+            </div>
+            <div class="w-full h-72 md:h-80">
+              <canvas id="followerChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. TAB: ANÁLISE IA (GEMINI ASSISTANT) -->
+        <div id="tab-ai" class="tab-content hidden">
+          <div class="bg-gradient-to-b from-purple-950/20 via-ig-lightCard dark:via-ig-darkCard to-ig-lightCard dark:to-ig-darkCard border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-lg">
+            <div class="flex items-center justify-between pb-6 mb-6 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-pink-600 to-amber-500 flex items-center justify-center text-white shadow-md">
+                  <i data-lucide="sparkles" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-base bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
+                    Inteligência Artificial Gemini
+                  </h3>
+                  <p class="text-xs text-ig-grayText">Diagnóstico comportamental, retenção de público e recomendações estratégicas</p>
+                </div>
+              </div>
+
+              <button onclick="requestFreshAiReport()" id="btn-refresh-ai" class="bg-ig-lightHover dark:bg-ig-darkHover border border-purple-500/30 hover:border-purple-500 text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-2">
+                <i data-lucide="refresh-cw" id="ai-spinner" class="w-3.5 h-3.5"></i>
+                <span>Regenerar Análise</span>
+              </button>
+            </div>
+
+            <!-- AI Output Box -->
+            <div id="ai-output-container" class="prose prose-invert max-w-none text-sm leading-relaxed text-ig-darkText dark:text-ig-whiteText/90">
+              <!-- AI Markdown or formatted text injected here -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- SAVED PROFILES VIEW (Alternative View) -->
+      <section id="saved-profiles-view" class="hidden mt-4">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold">Perfis Rastreados</h2>
+            <p class="text-xs text-ig-grayText">Histórico de contas monitoradas neste computador.</p>
+          </div>
+          <button onclick="openTrackModal()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Adicionar Perfil
+          </button>
+        </div>
+
+        <div id="profiles-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <!-- Rendered dynamically -->
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- MODAL: SETTINGS (API KEY & SESSION) -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+        <div class="flex items-center gap-2.5 font-bold text-base">
+          <i data-lucide="settings" class="w-5 h-5 text-ig-primary"></i>
+          <span>Configurações & Chaves</span>
+        </div>
+        <button onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-4 text-xs">
+        <div>
+          <label class="font-semibold block mb-1">Google Gemini API Key (IA):</label>
+          <input 
+            type="password" 
+            id="setting-gemini-key" 
+            placeholder="AIzaSy..." 
+            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
+          />
+          <p class="text-[10px] text-ig-grayText mt-1">Usada para gerar relatórios detalhados com o Gemini.</p>
+        </div>
+
+        <div>
+          <label class="font-semibold block mb-1">Cookie de Sessão do Instagram (sessionid):</label>
+          <input 
+            type="password" 
+            id="setting-session-cookie" 
+            placeholder="Ex: 582910294%3Afjka8..." 
+            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
+          />
+          <p class="text-[10px] text-ig-grayText mt-1">Opcional para modo Real. Se vazio, o modo Simulação funciona perfeitamente.</p>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <label class="font-semibold">Modo Padrão:</label>
+          <select id="setting-default-mode" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-lg px-2.5 py-1.5">
+            <option value="true">Simulação / Demonstração (Recomendado)</option>
+            <option value="false">Conexão Real Instagram</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-ig-lightBorder dark:border-ig-darkBorder">
+        <button onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-ig-lightHover dark:hover:bg-ig-darkHover">
+          Cancelar
+        </button>
+        <button onclick="saveSettings()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md">
+          Salvar Alterações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EXTENSION GUIDE -->
+  <div id="extension-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder w-full max-w-lg rounded-3xl p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+        <div class="flex items-center gap-2.5 font-bold text-base">
+          <i data-lucide="puzzle" class="w-5 h-5 text-emerald-500"></i>
+          <span>Extensão InstaTracker (Chrome / Edge)</span>
+        </div>
+        <button onclick="closeExtensionModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col gap-3 text-xs leading-relaxed">
+        <p class="text-ig-grayText">
+          A extensão permite coletar seguidores e seguidos diretamente da sua sessão ativa no navegador com <strong>zero risco de bloqueio</strong>.
+        </p>
+
+        <div class="bg-ig-lightHover dark:bg-ig-darkHover p-3.5 rounded-2xl border border-ig-lightBorder dark:border-ig-darkBorder flex flex-col gap-2">
+          <span class="font-bold text-emerald-500">Como instalar em 3 passos:</span>
+          <ol class="list-decimal pl-4 space-y-1.5 text-ig-darkText dark:text-ig-whiteText/90">
+            <li>Abra o seu navegador (Chrome ou Edge) e acesse: <code class="bg-black/20 dark:bg-black/60 px-1.5 py-0.5 rounded font-mono">chrome://extensions</code></li>
+            <li>No canto superior direito, ative a chave <strong>"Modo do desenvolvedor"</strong>.</li>
+            <li>Clique no botão <strong>"Carregar sem compactação"</strong> (ou <em>Load unpacked</em>) e selecione a pasta:
+              <div class="mt-1 font-mono text-[11px] bg-black/30 dark:bg-black/80 p-2 rounded-lg text-emerald-400 select-all">
+                C:\Users\user\IdeaProjects\Follow\extension
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 text-[11px]">
+          <i data-lucide="check-circle" class="w-4 h-4 flex-shrink-0"></i>
+          <span>Pronto! Ao navegar no Instagram, clique no ícone da extensão para sincronizar qualquer perfil com este Dashboard.</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-5 pt-3 border-t border-ig-lightBorder dark:border-ig-darkBorder">
+        <button onclick="closeExtensionModal()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md">
+          Entendi, Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 bg-ig-darkCard border border-ig-darkBorder text-white px-5 py-3 rounded-2xl shadow-2xl text-xs font-medium">
+    <div id="toast-icon"></div>
+    <span id="toast-message">Mensagem</span>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

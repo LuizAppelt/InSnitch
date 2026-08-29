@@ -1,0 +1,757 @@
+// State
+let currentProfile = null;
+let currentDiff = null;
+let currentReciprocity = { not_following_back: [], fans: [], mutual: [], verified: [], ghosts: [] };
+let chartInstance = null;
+let isMockMode = false;
+let isScanning = false;
+
+// DOM Elements
+const searchInput = document.getElementById("search-input");
+const btnScanMain = document.getElementById("btn-scan-main");
+const scanSpinner = document.getElementById("scan-spinner");
+const avatarRing = document.getElementById("avatar-ring");
+const profileAvatar = document.getElementById("profile-avatar");
+const profileUsername = document.getElementById("profile-username");
+const profileFullname = document.getElementById("profile-fullname");
+const profileBio = document.getElementById("profile-bio");
+const verifiedBadge = document.getElementById("verified-badge");
+const statPosts = document.getElementById("stat-posts");
+const statFollowers = document.getElementById("stat-followers");
+const statFollowing = document.getElementById("stat-following");
+const statLastScan = document.getElementById("stat-last-scan");
+
+// Metrics Hub Elements
+const metricNewFollowers = document.getElementById("metric-new-followers");
+const metricLostFollowers = document.getElementById("metric-lost-followers");
+const metricLostFollowing = document.getElementById("metric-lost-following");
+const metricMutual = document.getElementById("metric-mutual");
+const metricNotFollowingBack = document.getElementById("metric-not-following-back");
+const metricFans = document.getElementById("metric-fans");
+const metricVerified = document.getElementById("metric-verified");
+const metricGhosts = document.getElementById("metric-ghosts");
+
+// Badges & Lists Elements
+const badgeCountNew = document.getElementById("badge-count-new");
+const badgeCountLost = document.getElementById("badge-count-lost");
+const badgeCountLostFollowing = document.getElementById("badge-count-lost-following");
+const listNewFollowers = document.getElementById("list-new-followers");
+const listLostFollowers = document.getElementById("list-lost-followers");
+const listLostFollowing = document.getElementById("list-lost-following");
+const listMutual = document.getElementById("list-mutual");
+const listNotFollowingBack = document.getElementById("list-not-following-back");
+const listFans = document.getElementById("list-fans");
+const listVerified = document.getElementById("list-verified");
+const listGhosts = document.getElementById("list-ghosts");
+const aiOutputContainer = document.getElementById("ai-output-container");
+const aiSpinner = document.getElementById("ai-spinner");
+const modeToggleBtn = document.getElementById("mode-toggle-btn");
+const modeText = document.getElementById("mode-text");
+
+// Initialize on page load
+document.addEventListener("DOMContentLoaded", async () => {
+  initTheme();
+  lucide.createIcons();
+  await loadSettings();
+  await loadInitialProfile();
+});
+
+// Theme Toggle
+function initTheme() {
+  const savedTheme = localStorage.getItem("insta_tracker_theme") || "dark";
+  if (savedTheme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+  updateThemeUI();
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle("dark");
+  localStorage.setItem("insta_tracker_theme", isDark ? "dark" : "light");
+  updateThemeUI();
+  if (chartInstance && currentProfile) {
+    loadChart(currentProfile.username);
+  }
+}
+
+function updateThemeUI() {
+  const isDark = document.documentElement.classList.contains("dark");
+  const themeIcon = document.getElementById("theme-icon");
+  const themeText = document.getElementById("theme-text");
+  
+  if (isDark) {
+    themeIcon.setAttribute("data-lucide", "sun");
+    themeText.innerText = "Modo Claro";
+  } else {
+    themeIcon.setAttribute("data-lucide", "moon");
+    themeText.innerText = "Modo Escuro";
+  }
+  lucide.createIcons();
+}
+
+// Scan Mode Toggle (Mock vs Real)
+function toggleScanMode() {
+  isMockMode = !isMockMode;
+  updateScanModeUI();
+}
+
+function updateScanModeUI() {
+  if (isMockMode) {
+    modeText.innerText = "Simulação (Demo)";
+    modeToggleBtn.className = "font-semibold text-emerald-500 hover:underline flex items-center gap-1";
+    showToast("Modo Simulação ativado (Demo segura e rápida)", "info");
+  } else {
+    modeText.innerText = "Instagram Real";
+    modeToggleBtn.className = "font-semibold text-ig-primary hover:underline flex items-center gap-1";
+    showToast("Modo Real ativado (Conecta via sessão Instagram)", "warning");
+  }
+}
+
+// Load Settings from Backend
+async function loadSettings() {
+  try {
+    const res = await fetch("/api/settings");
+    const data = await res.json();
+    if (data) {
+      isMockMode = data.mock_mode_default;
+      updateScanModeUI();
+      if (data.has_gemini_key) {
+        document.getElementById("setting-gemini-key").placeholder = "Chave configurada (" + data.gemini_api_key_masked + ")";
+      }
+      if (data.has_session_cookie) {
+        document.getElementById("setting-session-cookie").placeholder = "Cookie sessionid configurado";
+      }
+    }
+  } catch (e) {
+    console.error("Erro ao carregar configurações:", e);
+  }
+}
+
+// Load Initial Profile or Demo
+async function loadInitialProfile() {
+  try {
+    const res = await fetch("/api/profiles");
+    const data = await res.json();
+    if (data.profiles && data.profiles.length > 0) {
+      await fetchProfileDiff(data.profiles[0].username);
+    } else {
+      // First time demo: auto track sample profile
+      await trackProfile("criador_tech", true);
+    }
+  } catch (e) {
+    console.error("Erro ao inicializar perfil:", e);
+  }
+}
+
+// Handle Search and Tracking
+async function handleSearchSubmit() {
+  const query = searchInput.value.trim();
+  if (!query) {
+    showToast("Por favor, digite um @usuario ou link do perfil", "error");
+    return;
+  }
+  await trackProfile(query, isMockMode);
+}
+
+function triggerRescan() {
+  if (currentProfile) {
+    trackProfile(currentProfile.username, isMockMode);
+  }
+}
+
+async function trackProfile(usernameOrUrl, useMock) {
+  if (isScanning) return;
+  setScanningState(true);
+
+  try {
+    const res = await fetch("/api/profiles/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username_or_url: usernameOrUrl,
+        use_mock: useMock
+      })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.detail || "Erro ao monitorar perfil.");
+    }
+
+    currentProfile = data.profile;
+    currentDiff = data.diff;
+    currentReciprocity = data.diff.reciprocity;
+
+    renderProfileHeader(data.profile);
+    renderMetrics(data.diff);
+    renderDiffs(data.diff);
+    renderReciprocityLists();
+    renderAiReport(data.ai_report);
+    loadChart(data.profile.username);
+
+    showToast(`Varredura concluída para @${data.profile.username}!`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  } finally {
+    setScanningState(false);
+  }
+}
+
+async function fetchProfileDiff(username) {
+  try {
+    setScanningState(true);
+    const res = await fetch(`/api/profiles/${username}/diff`);
+    const data = await res.json();
+    if (res.ok) {
+      currentProfile = data.profile;
+      currentDiff = data.diff;
+      currentReciprocity = data.diff.reciprocity;
+
+      renderProfileHeader(data.profile);
+      renderMetrics(data.diff);
+      renderDiffs(data.diff);
+      renderReciprocityLists();
+      renderAiReport(data.ai_report);
+      loadChart(data.profile.username);
+    }
+  } catch (e) {
+    console.error("Erro ao buscar diff:", e);
+  } finally {
+    setScanningState(false);
+  }
+}
+
+// UI State & Spinners
+function setScanningState(scanning) {
+  isScanning = scanning;
+  if (scanning) {
+    btnScanMain.disabled = true;
+    scanSpinner.classList.add("animate-spin");
+    avatarRing.classList.add("scanning");
+  } else {
+    btnScanMain.disabled = false;
+    scanSpinner.classList.remove("animate-spin");
+    avatarRing.classList.remove("scanning");
+  }
+}
+
+function handleAvatarError(img) {
+  if (img.dataset.proxied) {
+    img.src = `https://ui-avatars.com/api/?name=${(currentProfile && currentProfile.username) || 'IG'}&background=0095f6&color=fff&size=300`;
+    return;
+  }
+  img.dataset.proxied = "true";
+  img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+}
+
+function handleRowImageError(img, username) {
+  if (img.dataset.proxied) {
+    img.src = `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&size=150`;
+    return;
+  }
+  img.dataset.proxied = "true";
+  img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+}
+
+// Render Profile Header
+function renderProfileHeader(profile) {
+  profileUsername.innerText = `@${profile.username}`;
+  profileFullname.innerText = profile.full_name || `@${profile.username}`;
+  profileBio.innerText = profile.biography || "Nenhuma biografia informada.";
+  
+  if (profile.profile_pic_url) {
+    profileAvatar.removeAttribute("data-proxied");
+    profileAvatar.src = `/api/image-proxy?url=${encodeURIComponent(profile.profile_pic_url)}`;
+  } else {
+    profileAvatar.src = `https://ui-avatars.com/api/?name=${profile.username}&background=0095f6&color=fff&size=300`;
+  }
+  
+  if (profile.is_verified) {
+    verifiedBadge.classList.remove("hidden");
+  } else {
+    verifiedBadge.classList.add("hidden");
+  }
+
+  const now = new Date();
+  statLastScan.innerText = `Última checagem: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+}
+
+// Render Metrics & Pills
+function renderMetrics(diff) {
+  const counts = diff.counts || {};
+  statPosts.innerText = (currentProfile && currentProfile.posts_count != null) ? currentProfile.posts_count : (counts.posts_count || 0);
+  statFollowers.innerText = (counts.total_followers || 0).toLocaleString();
+  statFollowing.innerText = (counts.total_following || 0).toLocaleString();
+
+  const newCount = counts.new_followers_count || 0;
+  const lostCount = counts.lost_followers_count || 0;
+  const lostFollowingCount = counts.lost_following_count || 0;
+
+  metricNewFollowers.innerText = `+${newCount}`;
+  metricLostFollowers.innerText = `-${lostCount}`;
+  if (metricLostFollowing) metricLostFollowing.innerText = `-${lostFollowingCount}`;
+  if (metricMutual) metricMutual.innerText = (counts.mutual_count || 0).toLocaleString();
+  metricNotFollowingBack.innerText = (counts.not_following_back_count || 0).toLocaleString();
+  metricFans.innerText = (counts.fans_count || 0).toLocaleString();
+  if (metricVerified) metricVerified.innerText = (counts.verified_followers_count || 0).toLocaleString();
+  if (metricGhosts) metricGhosts.innerText = (counts.ghost_followers_count || 0).toLocaleString();
+
+  badgeCountNew.innerText = newCount;
+  badgeCountLost.innerText = lostCount;
+  if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowingCount;
+}
+
+// Render User Row Item Helper
+function createUserRowHtml(user, badgeType) {
+  const rawAvatar = user.profile_pic_url;
+  const avatar = rawAvatar ? `/api/image-proxy?url=${encodeURIComponent(rawAvatar)}` : `https://ui-avatars.com/api/?name=${user.username}&background=random&color=fff`;
+  
+  let badgeHtml = '';
+  if (badgeType === 'new') {
+    badgeHtml = '<span class="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full">+ Novo Seguidor</span>';
+  } else if (badgeType === 'lost') {
+    badgeHtml = '<span class="text-[10px] font-bold bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">- Deixou de Seguir</span>';
+  } else if (badgeType === 'lost_following') {
+    badgeHtml = '<span class="text-[10px] font-bold bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full">- Você deu Unfollow</span>';
+  } else if (badgeType === 'verified') {
+    badgeHtml = '<span class="text-[10px] font-bold bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">💎 Verificado</span>';
+  } else if (badgeType === 'ghost') {
+    badgeHtml = '<span class="text-[10px] font-bold bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded-full">👻 Fantasma</span>';
+  }
+
+  return `
+    <div class="user-row flex items-center justify-between p-2.5 rounded-xl bg-ig-lightHover/50 dark:bg-ig-darkHover/50 border border-ig-lightBorder/50 dark:border-ig-darkBorder/50">
+      <div class="flex items-center gap-3 min-w-0">
+        <img src="${avatar}" alt="${user.username}" referrerpolicy="no-referrer" onerror="handleRowImageError(this, '${user.username}')" class="w-10 h-10 rounded-full object-cover border border-ig-lightBorder dark:border-ig-darkBorder flex-shrink-0" />
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span class="font-semibold text-xs truncate">@${user.username}</span>
+            ${user.is_verified ? '<span class="text-ig-primary"><svg class="w-3.5 h-3.5 fill-current inline" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>' : ''}
+          </div>
+          <p class="text-[11px] text-ig-grayText truncate">${user.full_name || 'Usuário do Instagram'}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        ${badgeHtml}
+        <a href="https://instagram.com/${user.username}" target="_blank" class="text-ig-grayText hover:text-ig-primary p-1.5 rounded-lg hover:bg-ig-lightBorder dark:hover:bg-ig-darkBorder transition" title="Ver no Instagram">
+          <i data-lucide="external-link" class="w-4 h-4"></i>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+// Render Diffs Tab
+function renderDiffs(diff) {
+  const newFollowers = diff.diffs?.new_followers || [];
+  const lostFollowers = diff.diffs?.lost_followers || [];
+  const lostFollowing = diff.diffs?.lost_following || [];
+
+  if (newFollowers.length === 0) {
+    listNewFollowers.innerHTML = `
+      <div class="text-center py-6 text-ig-grayText text-xs">
+        <i data-lucide="check-circle" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-emerald-500"></i>
+        <p>Nenhum novo seguidor nesta varredura.</p>
+      </div>
+    `;
+  } else {
+    listNewFollowers.innerHTML = newFollowers.map(u => createUserRowHtml(u, 'new')).join('');
+  }
+
+  if (lostFollowers.length === 0) {
+    listLostFollowers.innerHTML = `
+      <div class="text-center py-6 text-ig-grayText text-xs">
+        <i data-lucide="smile" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-rose-500"></i>
+        <p>Nenhum unfollow recebido.</p>
+      </div>
+    `;
+  } else {
+    listLostFollowers.innerHTML = lostFollowers.map(u => createUserRowHtml(u, 'lost')).join('');
+  }
+
+  if (listLostFollowing) {
+    if (lostFollowing.length === 0) {
+      listLostFollowing.innerHTML = `
+        <div class="text-center py-6 text-ig-grayText text-xs">
+          <i data-lucide="check" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-orange-500"></i>
+          <p>Você não deu unfollow em ninguém.</p>
+        </div>
+      `;
+    } else {
+      listLostFollowing.innerHTML = lostFollowing.map(u => createUserRowHtml(u, 'lost_following')).join('');
+    }
+  }
+
+  lucide.createIcons();
+}
+
+// Render Reciprocity Lists
+function renderReciprocityLists() {
+  filterReciprocityList('mutual');
+  filterReciprocityList('not_following_back');
+  filterReciprocityList('fans');
+  filterReciprocityList('verified');
+  filterReciprocityList('ghosts');
+}
+
+function filterReciprocityList(type) {
+  if (type === 'mutual' && listMutual) {
+    const searchVal = (document.getElementById("search-mutual")?.value || "").toLowerCase();
+    const list = (currentReciprocity.mutual || []).filter(u => 
+      u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
+    );
+
+    if (list.length === 0) {
+      listMutual.innerHTML = `
+        <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
+          <i data-lucide="users" class="w-6 h-6 mx-auto mb-2 opacity-50 text-cyan-500"></i>
+          <p>Nenhum amigo mútuo encontrado para o filtro.</p>
+        </div>
+      `;
+    } else {
+      listMutual.innerHTML = list.map(u => createUserRowHtml(u, null)).join('');
+    }
+  } else if (type === 'not_following_back' && listNotFollowingBack) {
+    const searchVal = (document.getElementById("search-not-following")?.value || "").toLowerCase();
+    const list = (currentReciprocity.not_following_back || []).filter(u => 
+      u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
+    );
+
+    if (list.length === 0) {
+      listNotFollowingBack.innerHTML = `
+        <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
+          <i data-lucide="check" class="w-6 h-6 mx-auto mb-2 opacity-50 text-amber-500"></i>
+          <p>Tudo certo! Nenhuma conta encontrada para o filtro.</p>
+        </div>
+      `;
+    } else {
+      listNotFollowingBack.innerHTML = list.map(u => createUserRowHtml(u, null)).join('');
+    }
+  } else if (type === 'fans' && listFans) {
+    const searchVal = (document.getElementById("search-fans")?.value || "").toLowerCase();
+    const list = (currentReciprocity.fans || []).filter(u => 
+      u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
+    );
+
+    if (list.length === 0) {
+      listFans.innerHTML = `
+        <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
+          <p>Nenhum fã correspondente encontrado.</p>
+        </div>
+      `;
+    } else {
+      listFans.innerHTML = list.map(u => createUserRowHtml(u, null)).join('');
+    }
+  } else if (type === 'verified' && listVerified) {
+    const searchVal = (document.getElementById("search-verified")?.value || "").toLowerCase();
+    const list = (currentReciprocity.verified_followers || currentReciprocity.verified || []).filter(u => 
+      u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
+    );
+
+    if (list.length === 0) {
+      listVerified.innerHTML = `
+        <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
+          <i data-lucide="badge-check" class="w-6 h-6 mx-auto mb-2 opacity-50 text-blue-500"></i>
+          <p>Nenhum seguidor verificado (selo azul) encontrado.</p>
+        </div>
+      `;
+    } else {
+      listVerified.innerHTML = list.map(u => createUserRowHtml(u, 'verified')).join('');
+    }
+  } else if (type === 'ghosts' && listGhosts) {
+    const searchVal = (document.getElementById("search-ghosts")?.value || "").toLowerCase();
+    const list = (currentReciprocity.ghost_followers || currentReciprocity.ghosts || []).filter(u => 
+      u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
+    );
+
+    if (list.length === 0) {
+      listGhosts.innerHTML = `
+        <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
+          <i data-lucide="smile" class="w-6 h-6 mx-auto mb-2 opacity-50 text-emerald-500"></i>
+          <p>Ótimo! Sua base não possui seguidores com perfil fantasma/sem foto.</p>
+        </div>
+      `;
+    } else {
+      listGhosts.innerHTML = list.map(u => createUserRowHtml(u, 'ghost')).join('');
+    }
+  }
+  lucide.createIcons();
+}
+
+// Render Chart with Chart.js
+async function loadChart(username) {
+  try {
+    const res = await fetch(`/api/profiles/${username}/history`);
+    const data = await res.json();
+    if (!res.ok || !data.chart_data) return;
+
+    const ctx = document.getElementById("followerChart").getContext("2d");
+    const isDark = document.documentElement.classList.contains("dark");
+
+    const labels = data.chart_data.labels.map(t => {
+      const d = new Date(t);
+      return `${d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})} ${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+    });
+
+    const followerCounts = data.chart_data.followers;
+
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(0, 149, 246, 0.4)');
+    gradient.addColorStop(1, 'rgba(0, 149, 246, 0.0)');
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Seguidores',
+          data: followerCounts,
+          borderColor: '#0095f6',
+          backgroundColor: gradient,
+          borderWidth: 3,
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: '#0095f6',
+          pointBorderColor: isDark ? '#121212' : '#ffffff',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+            titleColor: isDark ? '#ffffff' : '#262626',
+            bodyColor: isDark ? '#a8a8a8' : '#737373',
+            borderColor: isDark ? '#262626' : '#dbdbdb',
+            borderWidth: 1,
+            padding: 10,
+            displayColors: false
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: isDark ? '#262626' : '#efefef' },
+            ticks: { color: '#8e8e8e', font: { size: 10 } }
+          },
+          y: {
+            grid: { color: isDark ? '#262626' : '#efefef' },
+            ticks: { color: '#8e8e8e', font: { size: 10 } }
+          }
+        }
+      }
+    });
+  } catch (e) {
+    console.error("Erro ao renderizar gráfico:", e);
+  }
+}
+
+// Render AI Report
+function renderAiReport(text) {
+  if (!text) {
+    aiOutputContainer.innerHTML = "<p class='text-ig-grayText'>Nenhuma análise gerada ainda. Clique em 'Analisar com IA' para gerar.</p>";
+    return;
+  }
+
+  // Simple Markdown to HTML parser
+  let html = text
+    .replace(/^### (.*$)/gim, '<h3 class="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 mt-4 mb-2">$1</h3>')
+    .replace(/^#### (.*$)/gim, '<h4 class="text-sm font-semibold mt-3 mb-1">$1</h4>')
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+    .replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-purple-500 pl-3 my-2 text-xs italic bg-purple-500/5 p-2 rounded-r-lg">$1</blockquote>')
+    .replace(/^\* (.*$)/gim, '<li class="text-xs ml-4 my-1">$1</li>')
+    .replace(/\n/gim, '<br />');
+
+  aiOutputContainer.innerHTML = html;
+}
+
+async function requestFreshAiReport() {
+  if (!currentProfile) return;
+  try {
+    aiSpinner.classList.add("animate-spin");
+    const res = await fetch(`/api/profiles/${currentProfile.username}/ai-report`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      renderAiReport(data.ai_report);
+      showToast("Análise com Gemini IA atualizada!", "success");
+    }
+  } catch (e) {
+    showToast("Erro ao gerar relatório com IA", "error");
+  } finally {
+    aiSpinner.classList.remove("animate-spin");
+  }
+}
+
+// Tab Switching
+function switchTab(tabId) {
+  // Hide all contents
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+  document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+
+  // Show selected content
+  const targetContent = document.getElementById(tabId);
+  if (targetContent) targetContent.classList.remove("hidden");
+
+  // Activate button
+  const targetBtn = document.getElementById(`btn-${tabId}`);
+  if (targetBtn) targetBtn.classList.add("active");
+
+  if (tabId === 'tab-chart' && currentProfile) {
+    loadChart(currentProfile.username);
+  }
+}
+
+// Switch between Main Views (Dashboard vs Saved Profiles)
+function switchMainView(view) {
+  const profileSection = document.getElementById("profile-header-section");
+  const metricsSection = document.getElementById("metrics-hub-section");
+  const tabsNav = document.getElementById("tabs-nav-container");
+  const tabContents = document.querySelectorAll(".tab-content");
+  const savedProfilesView = document.getElementById("saved-profiles-view");
+  const navDash = document.getElementById("nav-dashboard");
+  const navHist = document.getElementById("nav-history");
+
+  if (view === 'dashboard') {
+    if (profileSection) profileSection.classList.remove("hidden");
+    if (metricsSection) metricsSection.classList.remove("hidden");
+    if (tabsNav) tabsNav.classList.remove("hidden");
+    switchTab("tab-changes");
+    if (savedProfilesView) savedProfilesView.classList.add("hidden");
+    if (navDash) navDash.classList.add("active");
+    if (navHist) navHist.classList.remove("active");
+  } else if (view === 'history') {
+    if (profileSection) profileSection.classList.add("hidden");
+    if (metricsSection) metricsSection.classList.add("hidden");
+    if (tabsNav) tabsNav.classList.add("hidden");
+    tabContents.forEach(el => el.classList.add("hidden"));
+    if (savedProfilesView) savedProfilesView.classList.remove("hidden");
+    if (navDash) navDash.classList.remove("active");
+    if (navHist) navHist.classList.add("active");
+    loadSavedProfilesList();
+  }
+}
+
+async function loadSavedProfilesList() {
+  const grid = document.getElementById("profiles-grid");
+  grid.innerHTML = '<p class="text-xs text-ig-grayText col-span-full">Carregando perfis salvos...</p>';
+  try {
+    const res = await fetch("/api/profiles");
+    const data = await res.json();
+    if (!data.profiles || data.profiles.length === 0) {
+      grid.innerHTML = '<p class="text-xs text-ig-grayText col-span-full">Nenhum perfil rastreado ainda.</p>';
+      return;
+    }
+
+    grid.innerHTML = data.profiles.map(p => `
+      <div onclick="selectProfileFromList('${p.username}')" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-ig-primary transition flex items-center gap-4">
+        <img src="${p.profile_pic_url || 'https://ui-avatars.com/api/?name=' + p.username}" class="w-12 h-12 rounded-full object-cover border border-ig-lightBorder dark:border-ig-darkBorder" />
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1">
+            <span class="font-semibold text-xs truncate">@${p.username}</span>
+            ${p.is_verified ? '<span class="text-ig-primary text-xs">✓</span>' : ''}
+          </div>
+          <p class="text-[11px] text-ig-grayText truncate">${p.full_name || 'Sem nome'}</p>
+          <span class="text-[10px] text-ig-primary mt-1 block">${p.total_snapshots || 1} varreduras</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    grid.innerHTML = '<p class="text-xs text-rose-500 col-span-full">Erro ao carregar lista de perfis.</p>';
+  }
+}
+
+async function selectProfileFromList(username) {
+  switchMainView('dashboard');
+  await fetchProfileDiff(username);
+}
+
+function resetToHome() {
+  switchMainView('dashboard');
+}
+
+function openTrackModal() {
+  searchInput.focus();
+  searchInput.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Extension Modal
+function openExtensionModal() {
+  document.getElementById("extension-modal").classList.remove("hidden");
+}
+
+function closeExtensionModal() {
+  document.getElementById("extension-modal").classList.add("hidden");
+}
+
+// Settings Modal
+function openSettingsModal() {
+  document.getElementById("settings-modal").classList.remove("hidden");
+}
+
+function closeSettingsModal() {
+  document.getElementById("settings-modal").classList.add("hidden");
+}
+
+async function saveSettings() {
+  const geminiKey = document.getElementById("setting-gemini-key").value;
+  const sessionCookie = document.getElementById("setting-session-cookie").value;
+  const defaultMode = document.getElementById("setting-default-mode").value === "true";
+
+  try {
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gemini_api_key: geminiKey || undefined,
+        instagram_session_cookie: sessionCookie || undefined,
+        mock_mode_default: defaultMode
+      })
+    });
+    if (res.ok) {
+      showToast("Configurações salvas com sucesso!", "success");
+      closeSettingsModal();
+      await loadSettings();
+    }
+  } catch (e) {
+    showToast("Erro ao salvar configurações", "error");
+  }
+}
+
+// Toast Notifications
+function showToast(message, type = "info") {
+  const toast = document.getElementById("toast");
+  const toastMsg = document.getElementById("toast-message");
+  const toastIcon = document.getElementById("toast-icon");
+
+  toastMsg.innerText = message;
+
+  let iconHtml = '<i data-lucide="info" class="w-4 h-4 text-ig-primary"></i>';
+  if (type === 'success') {
+    iconHtml = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>';
+  } else if (type === 'error') {
+    iconHtml = '<i data-lucide="alert-circle" class="w-4 h-4 text-rose-500"></i>';
+  } else if (type === 'warning') {
+    iconHtml = '<i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500"></i>';
+  }
+
+  toastIcon.innerHTML = iconHtml;
+  lucide.createIcons();
+
+  toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+  
+  setTimeout(() => {
+    toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
+  }, 3500);
+}

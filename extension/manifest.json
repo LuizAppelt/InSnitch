@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "InstaTracker - Follow & Unfollow AI",
+  "version": "1.0.0",
+  "description": "Sincronize seguidores e seguindo de qualquer perfil do Instagram com o seu dashboard local sem risco de bloqueio.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.instagram.com/*",
+    "http://127.0.0.1:8000/*",
+    "http://localhost:8000/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "InstaTracker"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

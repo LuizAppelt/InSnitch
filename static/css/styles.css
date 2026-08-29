@@ -1,0 +1,135 @@
+/* Instagram Theme Styles & Custom Animations */
+
+:root {
+  --ig-gradient: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  --ig-blue: #0095f6;
+  --ig-blue-hover: #1877f2;
+}
+
+/* Custom Story Gradient Ring */
+.story-ring {
+  background: var(--ig-gradient);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.story-ring.scanning {
+  animation: spin-gradient 2s linear infinite, pulse-scale 1.5s ease-in-out infinite;
+}
+
+@keyframes spin-gradient {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  100% {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes pulse-scale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* Instagram Wordmark Gradient Icon */
+.instagram-gradient-icon {
+  background: var(--ig-gradient);
+}
+
+/* Active Nav and Tab Indicators */
+.nav-item.active {
+  font-weight: 700;
+}
+
+.tab-btn.active {
+  border-top-color: currentColor;
+  color: #0095f6;
+}
+
+.dark .tab-btn.active {
+  color: #ffffff;
+  border-top-color: #ffffff;
+}
+
+/* Metric Cards Hover Micro-interactions */
+.metric-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.12);
+}
+
+.dark .metric-card:hover {
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* User Row Hover */
+.user-row {
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.user-row:hover {
+  transform: translateX(2px);
+}
+
+/* Custom Thin Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(142, 142, 142, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(142, 142, 142, 0.5);
+}
+
+/* AI Report Markdown Styling */
+#ai-output-container h1, 
+#ai-output-container h2, 
+#ai-output-container h3, 
+#ai-output-container h4 {
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: inherit;
+}
+
+#ai-output-container p {
+  margin-bottom: 0.75rem;
+}
+
+#ai-output-container ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+#ai-output-container li {
+  margin-bottom: 0.25rem;
+}
+
+#ai-output-container blockquote {
+  border-left: 3px solid #833ab4;
+  padding-left: 0.75rem;
+  font-style: italic;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.9;
+}
+
+#ai-output-container strong {
+  font-weight: 600;
+}
