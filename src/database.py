@@ -160,7 +160,7 @@ def save_snapshot(
     following_list: List[Dict[str, Any]],
     note: str = ""
 ) -> int:
-    """Saves a new snapshot and all its associated followers and following users."""
+    """Saves a new snapshot and all its associated followers and following users with strict deduplication."""
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -171,23 +171,33 @@ def save_snapshot(
     
     snapshot_id = cursor.lastrowid
 
-    # Insert followers
+    # Insert unique followers
     users_to_insert = []
+    seen_followers = set()
     for u in followers_list:
+        uname = (u.get("username") or "").lower().strip()
+        if not uname or uname in seen_followers:
+            continue
+        seen_followers.add(uname)
         users_to_insert.append((
             snapshot_id,
-            u["username"].lower().strip(),
+            uname,
             u.get("full_name", ""),
             u.get("profile_pic_url", ""),
             1 if u.get("is_verified") else 0,
             "follower"
         ))
     
-    # Insert following
+    # Insert unique following
+    seen_following = set()
     for u in following_list:
+        uname = (u.get("username") or "").lower().strip()
+        if not uname or uname in seen_following:
+            continue
+        seen_following.add(uname)
         users_to_insert.append((
             snapshot_id,
-            u["username"].lower().strip(),
+            uname,
             u.get("full_name", ""),
             u.get("profile_pic_url", ""),
             1 if u.get("is_verified") else 0,

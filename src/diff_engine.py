@@ -80,8 +80,8 @@ def calculate_diff(current_snapshot_id: int, previous_snapshot_id: Optional[int]
         "current_snapshot_id": current_snapshot_id,
         "previous_snapshot_id": previous_snapshot_id,
         "counts": {
-            "total_followers": max(len(curr_followers_raw), len(curr_followers_set)),
-            "total_following": max(len(curr_following_raw), len(curr_following_set)),
+            "total_followers": len(curr_followers_set),
+            "total_following": len(curr_following_set),
             "unique_followers_count": len(curr_followers_set),
             "unique_following_count": len(curr_following_set),
             "new_followers_count": len(new_followers_list),

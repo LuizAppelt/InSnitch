@@ -279,8 +279,8 @@ function renderProfileHeader(profile) {
 function renderMetrics(diff) {
   const counts = diff.counts || {};
   statPosts.innerText = (currentProfile && currentProfile.posts_count != null) ? currentProfile.posts_count : (counts.posts_count || 0);
-  statFollowers.innerText = (counts.total_followers || 0).toLocaleString();
-  statFollowing.innerText = (counts.total_following || 0).toLocaleString();
+  statFollowers.innerText = ((currentProfile && currentProfile.followers_count) || counts.total_followers || 0).toLocaleString();
+  statFollowing.innerText = ((currentProfile && currentProfile.following_count) || counts.total_following || 0).toLocaleString();
 
   const newCount = counts.new_followers_count || 0;
   const lostCount = counts.lost_followers_count || 0;

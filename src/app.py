@@ -208,8 +208,23 @@ async def extension_import(req: ExtensionImportRequest):
         for g in req.following
     ]
 
-    followers_count = req.followers_count or len(followers_list)
-    following_count = req.following_count or len(following_list)
+    # Safeguards against corrupted/incomplete imports
+    expected_followers = req.followers_count or req.profile.followers_count or 0
+    expected_following = req.following_count or req.profile.following_count or 0
+
+    if expected_followers > 10 and len(followers_list) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A lista de seguidores retornou vazia (0 de {expected_followers}). O snapshot foi cancelado para proteger o histórico de dados."
+        )
+    if expected_following > 10 and len(following_list) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A lista de seguidos retornou vazia (0 de {expected_following}). O snapshot foi cancelado para proteger o histórico de dados."
+        )
+
+    followers_count = expected_followers or len(followers_list)
+    following_count = expected_following or len(following_list)
     posts_count = req.posts_count or req.profile.posts_count or 0
 
     new_snapshot_id = save_snapshot(
