@@ -98,6 +98,17 @@ async function extractProfileInfo(username) {
     if (!profile.biography && bioEl) profile.biography = bioEl.innerText;
     if (!profile.profile_pic_url && avatarEl) profile.profile_pic_url = avatarEl.src;
     if (!profile.is_verified) profile.is_verified = !!document.querySelector('header [title="Verificado"]');
+
+    // 3. Fallback to extract User ID from page HTML scripts
+    if (!profile.id) {
+      const html = document.documentElement.innerHTML;
+      const idMatch = html.match(/"owner_user_id":"([0-9]+)"/) || 
+                      html.match(new RegExp(`"id":"([0-9]+)","username":"${username}"`, "i")) ||
+                      html.match(/"user_id":"([0-9]+)"/) ||
+                      html.match(/"pk":"([0-9]+)"/) ||
+                      html.match(/"pk_id":"([0-9]+)"/);
+      if (idMatch) profile.id = idMatch[1];
+    }
   } catch (domErr) {
     console.warn("[InSnitch] Erro ao enriquecer via DOM:", domErr);
   }
@@ -311,6 +322,19 @@ async function executeAutoScrapePass(session) {
   isAutoScrapeRunning = true;
 
   try {
+    // Validate targetId
+    if (!session.targetId) {
+      const pInfo = await extractProfileInfo(session.username);
+      if (pInfo.id) session.targetId = pInfo.id;
+    }
+
+    if (!session.targetId) {
+      updateFloatingBanner("Não foi possível identificar o ID deste perfil no Instagram.", null, false, true);
+      isAutoScrapeRunning = false;
+      await chrome.storage.local.remove(["insnitch_auto_session"]);
+      return;
+    }
+
     const currentFollowers = session.followersMap || {};
     const currentFollowing = session.followingMap || {};
     const prevFollowersCount = Object.keys(currentFollowers).length;
@@ -374,14 +398,22 @@ async function executeAutoScrapePass(session) {
     console.log(`[InSnitch] Passagem ${pass}/${maxPasses} concluída. Total acumulado: ${newFollowersCount}/${targetTotal} (+${newlyAdded} novos)`);
 
     // Smart completion criteria:
-    // 1. If 0 followers were fetched on an account with followers, retry instead of sending empty payload
+    // 1. If 0 followers were fetched on an account with followers, retry up to 2 times max (NO infinite loop)
     if (newFollowersCount === 0 && expected > 10) {
-      console.warn(`[InSnitch] Nenhum seguidor retornado na passagem ${pass}. Tentando novamente em 3s...`);
-      updateFloatingBanner(`Instagram demorou para responder. Aguardando 3s e tentando passagem ${pass}...`, null, false, true);
-      await new Promise(r => setTimeout(r, 3000));
-      isAutoScrapeRunning = false;
-      await executeAutoScrapePass(session);
-      return;
+      session.emptyRetryCount = (session.emptyRetryCount || 0) + 1;
+      if (session.emptyRetryCount <= 2) {
+        console.warn(`[InSnitch] Nenhum seguidor retornado na passagem ${pass}. Tentativa ${session.emptyRetryCount}/2...`);
+        updateFloatingBanner(`Aguardando resposta do Instagram (${session.emptyRetryCount}/2)...`, null, false, true);
+        await new Promise(r => setTimeout(r, 2500));
+        isAutoScrapeRunning = false;
+        await executeAutoScrapePass(session);
+        return;
+      } else {
+        updateFloatingBanner("Instagram limitou o acesso temporariamente. Aguarde alguns segundos e tente novamente.", null, false, true);
+        isAutoScrapeRunning = false;
+        await chrome.storage.local.remove(["insnitch_auto_session"]);
+        return;
+      }
     }
 
     // 2. Target met exactly
