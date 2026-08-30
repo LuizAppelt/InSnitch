@@ -22,7 +22,29 @@ function getCurrentPageUsername() {
 
 // Extract profile details from DOM or internal API
 async function extractProfileInfo(username) {
-  // Try fetching via internal endpoint with browser cookies
+  let profile = {
+    id: null,
+    username: username,
+    full_name: username,
+    biography: "",
+    profile_pic_url: "",
+    is_verified: false,
+    is_private: false,
+    posts_count: 0,
+    followers_count: 0,
+    following_count: 0
+  };
+
+  // Helper to parse string counts (e.g. "1,234", "10.5K", "1.2M")
+  function parseCount(str) {
+    if (!str) return 0;
+    str = String(str).replace(/\./g, '').replace(/,/g, '.').trim().toLowerCase();
+    if (str.endsWith('k')) return Math.round(parseFloat(str) * 1000);
+    if (str.endsWith('m')) return Math.round(parseFloat(str) * 1000000);
+    return parseInt(str.replace(/[^0-9]/g, '')) || 0;
+  }
+
+  // 1. Try fetching via internal endpoint with browser cookies
   try {
     const headers = {
       'x-ig-app-id': '936619743392459',
@@ -41,42 +63,46 @@ async function extractProfileInfo(username) {
       const data = await res.json();
       const u = data?.data?.user;
       if (u) {
-        return {
-          id: u.id,
-          username: u.username,
-          full_name: u.full_name || "",
-          biography: u.biography || "",
-          profile_pic_url: u.profile_pic_url_hd || u.profile_pic_url || "",
-          is_verified: u.is_verified || false,
-          is_private: u.is_private || false,
-          posts_count: u.edge_owner_to_timeline_media?.count || 0,
-          followers_count: u.edge_followed_by?.count || 0,
-          following_count: u.edge_follow?.count || 0
-        };
+        profile.id = u.id;
+        profile.username = u.username;
+        profile.full_name = u.full_name || "";
+        profile.biography = u.biography || "";
+        profile.profile_pic_url = u.profile_pic_url_hd || u.profile_pic_url || "";
+        profile.is_verified = u.is_verified || false;
+        profile.is_private = u.is_private || false;
+        profile.posts_count = u.edge_owner_to_timeline_media?.count || 0;
+        profile.followers_count = u.edge_followed_by?.count || 0;
+        profile.following_count = u.edge_follow?.count || 0;
       }
     }
   } catch (e) {
-    console.warn("[InstaTracker] Falha ao obter dados via web_profile_info, tentando via DOM:", e);
+    console.warn("[InSnitch] web_profile_info falhou, usando meta/DOM:", e);
   }
 
-  // Fallback: Extract from DOM
-  const title = document.title || "";
-  const nameEl = document.querySelector('header section h2, header section h1');
-  const bioEl = document.querySelector('header section h1 + div, header section .-vDIg');
-  const avatarEl = document.querySelector('header img');
+  // 2. Fallback / Enrichment from DOM and Meta Tags
+  try {
+    const metaDesc = document.querySelector('meta[name="description"]')?.content || "";
+    const followersMatch = metaDesc.match(/([0-9.,kKmM]+)\s+Followers/i) || metaDesc.match(/([0-9.,kKmM]+)\s+seguidores/i);
+    const followingMatch = metaDesc.match(/([0-9.,kKmM]+)\s+Following/i) || metaDesc.match(/([0-9.,kKmM]+)\s+seguindo/i);
+    const postsMatch = metaDesc.match(/([0-9.,kKmM]+)\s+Posts/i) || metaDesc.match(/([0-9.,kKmM]+)\s+publicações/i);
 
-  return {
-    id: null,
-    username: username,
-    full_name: nameEl ? nameEl.innerText : username,
-    biography: bioEl ? bioEl.innerText : "",
-    profile_pic_url: avatarEl ? avatarEl.src : "",
-    is_verified: !!document.querySelector('header [title="Verificado"]'),
-    is_private: false,
-    posts_count: 0,
-    followers_count: 0,
-    following_count: 0
-  };
+    if (!profile.followers_count && followersMatch) profile.followers_count = parseCount(followersMatch[1]);
+    if (!profile.following_count && followingMatch) profile.following_count = parseCount(followingMatch[1]);
+    if (!profile.posts_count && postsMatch) profile.posts_count = parseCount(postsMatch[1]);
+
+    const nameEl = document.querySelector('header section h2, header section h1');
+    const bioEl = document.querySelector('header section h1 + div, header section .-vDIg');
+    const avatarEl = document.querySelector('header img');
+
+    if (!profile.full_name && nameEl) profile.full_name = nameEl.innerText;
+    if (!profile.biography && bioEl) profile.biography = bioEl.innerText;
+    if (!profile.profile_pic_url && avatarEl) profile.profile_pic_url = avatarEl.src;
+    if (!profile.is_verified) profile.is_verified = !!document.querySelector('header [title="Verificado"]');
+  } catch (domErr) {
+    console.warn("[InSnitch] Erro ao enriquecer via DOM:", domErr);
+  }
+
+  return profile;
 }
 
 // Fetch user list (followers or following) with pagination & deduplication
@@ -194,6 +220,9 @@ async function fetchUserList(userId, type = "followers", onProgress, options = {
   return users;
 }
 
+// Single-runner lock to prevent duplicate executions on page reload
+let isAutoScrapeRunning = false;
+
 // Floating On-Screen Progress Banner for InSnitch Auto-Sync
 function updateFloatingBanner(message, percent = null, isDone = false, isError = false) {
   let banner = document.getElementById("insnitch-floating-banner");
@@ -260,6 +289,7 @@ function updateFloatingBanner(message, percent = null, isDone = false, isError =
   const btnCancel = banner.querySelector("#btn-cancel-insnitch");
   if (btnCancel) {
     btnCancel.addEventListener("click", () => {
+      isAutoScrapeRunning = false;
       chrome.runtime.sendMessage({ action: "CLEAR_AUTO_SESSION" });
       banner.remove();
     });
@@ -274,17 +304,25 @@ function updateFloatingBanner(message, percent = null, isDone = false, isError =
 
 // Auto-Reload Scrape Session Runner
 async function executeAutoScrapePass(session) {
+  if (isAutoScrapeRunning) {
+    console.log("[InSnitch] Coleta já em execução, ignorando chamada concorrente.");
+    return;
+  }
+  isAutoScrapeRunning = true;
+
   try {
     const currentFollowers = session.followersMap || {};
     const currentFollowing = session.followingMap || {};
     const prevFollowersCount = Object.keys(currentFollowers).length;
-    const targetTotal = Math.min(session.expectedFollowers || 10000, session.options.maxLimit || 10000);
+    const expected = session.expectedFollowers || 0;
+    const maxLimit = session.options?.maxLimit || 10000;
+    const targetTotal = expected > 0 ? Math.min(expected, maxLimit) : maxLimit;
     const pass = session.pass || 1;
     const maxPasses = session.maxPasses || 10;
 
     const currentPerc = targetTotal > 0 ? Math.round((prevFollowersCount / targetTotal) * 100) : 0;
     updateFloatingBanner(
-      `Passagem ${pass}/${maxPasses}: Coletando seguidores (${prevFollowersCount}/${targetTotal} catalogados)...`,
+      `Passagem ${pass}/${maxPasses}: Coletando seguidores (${prevFollowersCount}/${targetTotal || '...'} catalogados)...`,
       currentPerc
     );
 
@@ -293,12 +331,12 @@ async function executeAutoScrapePass(session) {
       const liveCount = Math.max(prevFollowersCount, count);
       const perc = targetTotal > 0 ? Math.round((liveCount / targetTotal) * 100) : 0;
       updateFloatingBanner(
-        extra || `Passagem ${pass}/${maxPasses}: Coletando seguidores (${liveCount}/${targetTotal})...`,
+        extra || `Passagem ${pass}/${maxPasses}: Coletando seguidores (${liveCount}/${targetTotal || '...'})...`,
         perc
       );
     }, session.options);
 
-    // Merge followers
+    // Merge followers into persistent map
     for (const u of passFollowers) {
       const clean = (u.username || "").toLowerCase().trim();
       if (clean && !currentFollowers[clean]) {
@@ -335,12 +373,21 @@ async function executeAutoScrapePass(session) {
 
     console.log(`[InSnitch] Passagem ${pass}/${maxPasses} concluída. Total acumulado: ${newFollowersCount}/${targetTotal} (+${newlyAdded} novos)`);
 
-    // Check if finished
+    // Smart completion criteria:
+    // 1. Target met exactly
     const targetMet = targetTotal > 0 && newFollowersCount >= targetTotal;
-    const exhausted = (session.zeroProgressCount >= 2 && newFollowersCount >= 1000);
+    // 2. Small account (< 1200 followers) that reached end of list on pass 1
+    const isSmallAccountDone = (expected > 0 && expected <= 1200 && newFollowersCount >= expected * 0.95);
+    // 3. Instagram end-of-list reached (passFollowers had fewer than 50 users on pass 1)
+    const endOfListReached = pass === 1 && passFollowers.length < 50;
+    // 4. Exhausted visible pool after 2 zero-progress passes
+    const exhausted = (session.zeroProgressCount >= 2 && newFollowersCount >= 500);
+    // 5. Reached max reloads
     const maxPassesReached = pass >= maxPasses;
 
-    if (targetMet || exhausted || maxPassesReached) {
+    const isComplete = targetMet || isSmallAccountDone || endOfListReached || exhausted || maxPassesReached;
+
+    if (isComplete) {
       // Complete and send package to local backend
       updateFloatingBanner("Enviando pacote consolidado para o Dashboard local...", 100);
 
@@ -378,7 +425,10 @@ async function executeAutoScrapePass(session) {
           throw new Error(errData.detail || "Falha ao gravar no dashboard.");
         }
 
-        chrome.runtime.sendMessage({ action: "CLEAR_AUTO_SESSION" });
+        // Clean up storage
+        await chrome.storage.local.remove(["insnitch_auto_session"]);
+        isAutoScrapeRunning = false;
+
         updateFloatingBanner(
           `✓ Sincronização 100% Concluída! ${followersList.length} seguidores consolidados e salvos no InSnitch!`,
           100,
@@ -386,27 +436,30 @@ async function executeAutoScrapePass(session) {
         );
       } catch (postErr) {
         updateFloatingBanner(`Erro ao salvar no Dashboard: ${postErr.message}`, null, false, true);
+        isAutoScrapeRunning = false;
       }
     } else {
-      // Trigger automatic page reload for next pass
+      // Save session securely to chrome.storage.local BEFORE triggering page reload
       session.pass = pass + 1;
       const remaining = targetTotal - newFollowersCount;
+
       updateFloatingBanner(
         `Passagem ${pass} concluída (${newFollowersCount}/${targetTotal}). Recarregando página para capturar ${remaining} restantes...`,
         Math.round((newFollowersCount / targetTotal) * 100)
       );
 
+      await chrome.storage.local.set({ insnitch_auto_session: session });
+      isAutoScrapeRunning = false;
+
       await new Promise(r => setTimeout(r, 2000));
-      chrome.runtime.sendMessage({
-        action: "RELOAD_TAB_FOR_NEXT_PASS",
-        sessionState: session
-      });
+      chrome.runtime.sendMessage({ action: "RELOAD_TAB_FOR_NEXT_PASS" });
     }
 
   } catch (err) {
     console.error("[InSnitch] Erro na sessão de auto-scrape:", err);
     updateFloatingBanner(`Erro na coleta: ${err.message}`, null, false, true);
-    chrome.runtime.sendMessage({ action: "CLEAR_AUTO_SESSION" });
+    isAutoScrapeRunning = false;
+    await chrome.storage.local.remove(["insnitch_auto_session"]);
   }
 }
 
@@ -416,7 +469,7 @@ chrome.storage.local.get(["insnitch_auto_session"], (data) => {
     console.log("[InSnitch] Sessão de auto-reload ativa detectada. Retomando passagem...");
     setTimeout(() => {
       executeAutoScrapePass(data.insnitch_auto_session);
-    }, 2000);
+    }, 1800);
   }
 });
 
@@ -425,16 +478,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "GET_CURRENT_PROFILE") {
     const username = getCurrentPageUsername();
     sendResponse({ username });
-    return true;
-  }
-
-  if (request.action === "RESUME_AUTO_SESSION") {
-    chrome.storage.local.get(["insnitch_auto_session"], (data) => {
-      if (data && data.insnitch_auto_session) {
-        executeAutoScrapePass(data.insnitch_auto_session);
-      }
-    });
-    sendResponse({ success: true });
     return true;
   }
 
@@ -487,7 +530,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           followersMap: {},
           followingMap: {},
           pass: 1,
-          maxPasses: 10,
+          maxPasses: (expectedFollowers > 1200) ? 10 : 1,
           zeroProgressCount: 0
         };
 
