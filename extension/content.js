@@ -191,6 +191,9 @@ async function fetchUserList(userId, type = "followers", onProgress, options = {
     await new Promise(r => setTimeout(r, delayMs));
   }
 
+  return users;
+}
+
 // Multi-pass collector to combine multiple sessions for large accounts (>1500 users)
 async function collectCompleteUserList(userId, type = "followers", expectedTotal = 0, onProgress, options = {}) {
   const maxLimit = options.maxLimit || 10000;
