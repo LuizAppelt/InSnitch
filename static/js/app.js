@@ -21,16 +21,7 @@ const statFollowers = document.getElementById("stat-followers");
 const statFollowing = document.getElementById("stat-following");
 const statLastScan = document.getElementById("stat-last-scan");
 
-// Metrics Hub Elements
-const metricNewFollowers = document.getElementById("metric-new-followers");
-const metricLostFollowers = document.getElementById("metric-lost-followers");
-const metricNewFollowing = document.getElementById("metric-new-following");
-const metricLostFollowing = document.getElementById("metric-lost-following");
-const metricMutual = document.getElementById("metric-mutual");
-const metricNotFollowingBack = document.getElementById("metric-not-following-back");
-const metricFans = document.getElementById("metric-fans");
-const metricVerified = document.getElementById("metric-verified");
-const metricGhosts = document.getElementById("metric-ghosts");
+
 
 // Badges & Lists Elements
 const badgeCountNew = document.getElementById("badge-count-new");
@@ -207,7 +198,7 @@ async function fetchProfileDiff(username) {
       currentHistoryEvents = data.history_events || null;
       currentReciprocity = data.diff.reciprocity;
 
-      renderProfileHeader(data.profile);
+      renderProfileHeader(data.profile, data.latest_snapshot, data.diff);
       renderMetrics(data.diff);
       renderSnapshotHistoryDropdown(data.history_events?.snapshots || []);
       renderDiffs(data.diff);
@@ -253,7 +244,8 @@ function handleRowImageError(img, username) {
 }
 
 // Render Profile Header
-function renderProfileHeader(profile) {
+function renderProfileHeader(profile, latestSnapshot, diff) {
+  if (!profile) return;
   profileUsername.innerText = `@${profile.username}`;
   profileFullname.innerText = profile.full_name || `@${profile.username}`;
   profileBio.innerText = profile.biography || "Nenhuma biografia informada.";
@@ -271,34 +263,46 @@ function renderProfileHeader(profile) {
     verifiedBadge.classList.add("hidden");
   }
 
-  const now = new Date();
-  statLastScan.innerText = `Última checagem: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+  const posts = latestSnapshot?.posts_count ?? profile.posts_count ?? 0;
+  const followers = latestSnapshot?.followers_count ?? diff?.counts?.total_followers ?? 0;
+  const following = latestSnapshot?.following_count ?? diff?.counts?.total_following ?? 0;
+
+  if (statPosts) statPosts.innerText = posts.toLocaleString();
+  if (statFollowers) statFollowers.innerText = followers.toLocaleString();
+  if (statFollowing) statFollowing.innerText = following.toLocaleString();
+
+  const now = latestSnapshot?.timestamp ? new Date(latestSnapshot.timestamp) : new Date();
+  if (statLastScan) {
+    statLastScan.innerText = `Última checagem: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+  }
 }
 
-// Render Metrics & Pills
+// Render Metrics & Tab Badges
 function renderMetrics(diff) {
   const counts = diff.counts || {};
-  statPosts.innerText = (currentProfile && currentProfile.posts_count != null) ? currentProfile.posts_count : (counts.posts_count || 0);
-  statFollowers.innerText = ((currentProfile && currentProfile.followers_count) || counts.total_followers || 0).toLocaleString();
-  statFollowing.innerText = ((currentProfile && currentProfile.following_count) || counts.total_following || 0).toLocaleString();
-
+  
   const newCount = counts.new_followers_count || 0;
   const lostCount = counts.lost_followers_count || 0;
   const newFollowingCount = counts.new_following_count || 0;
   const lostFollowingCount = counts.lost_following_count || 0;
+  const totalChanges = newCount + lostCount + newFollowingCount + lostFollowingCount;
 
-  metricNewFollowers.innerText = `+${newCount}`;
-  metricLostFollowers.innerText = `-${lostCount}`;
-  if (metricNewFollowing) metricNewFollowing.innerText = `+${newFollowingCount}`;
-  if (metricLostFollowing) metricLostFollowing.innerText = `-${lostFollowingCount}`;
-  if (metricMutual) metricMutual.innerText = (counts.mutual_count || 0).toLocaleString();
-  metricNotFollowingBack.innerText = (counts.not_following_back_count || 0).toLocaleString();
-  metricFans.innerText = (counts.fans_count || 0).toLocaleString();
-  if (metricVerified) metricVerified.innerText = (counts.verified_followers_count || 0).toLocaleString();
-  if (metricGhosts) metricGhosts.innerText = (counts.ghost_followers_count || 0).toLocaleString();
+  const tabBadgeChanges = document.getElementById("tab-badge-changes");
+  const tabBadgeMutual = document.getElementById("tab-badge-mutual");
+  const tabBadgeNotFollowing = document.getElementById("tab-badge-not-following");
+  const tabBadgeFans = document.getElementById("tab-badge-fans");
+  const tabBadgeVerified = document.getElementById("tab-badge-verified");
+  const tabBadgeGhosts = document.getElementById("tab-badge-ghosts");
 
-  badgeCountNew.innerText = newCount;
-  badgeCountLost.innerText = lostCount;
+  if (tabBadgeChanges) tabBadgeChanges.innerText = totalChanges;
+  if (tabBadgeMutual) tabBadgeMutual.innerText = (counts.mutual_count || 0).toLocaleString();
+  if (tabBadgeNotFollowing) tabBadgeNotFollowing.innerText = (counts.not_following_back_count || 0).toLocaleString();
+  if (tabBadgeFans) tabBadgeFans.innerText = (counts.fans_count || 0).toLocaleString();
+  if (tabBadgeVerified) tabBadgeVerified.innerText = (counts.verified_followers_count || 0).toLocaleString();
+  if (tabBadgeGhosts) tabBadgeGhosts.innerText = (counts.ghost_followers_count || 0).toLocaleString();
+
+  if (badgeCountNew) badgeCountNew.innerText = newCount;
+  if (badgeCountLost) badgeCountLost.innerText = lostCount;
   if (badgeCountNewFollowing) badgeCountNewFollowing.innerText = newFollowingCount;
   if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowingCount;
 }

@@ -229,163 +229,53 @@
         </div>
       </section>
 
-      <!-- HARMONIC METRICS HUB (2-TIER CLEAN DESIGN) -->
-      <section id="metrics-hub-section" class="my-6 flex flex-col gap-3">
-        
-        <!-- TIER 1: MOVIMENTAÇÕES RECENTES (ÚLTIMA VARREDURA) -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <!-- NAVIGATION TABS WITH INTEGRATED COUNTERS (Clean Instagram Style) -->
+      <div id="tabs-nav-container" class="border-t border-ig-lightBorder dark:border-ig-darkBorder mt-6">
+        <nav class="flex justify-start gap-3 sm:gap-6 -mt-px text-xs font-semibold uppercase tracking-wider text-ig-grayText overflow-x-auto no-scrollbar">
           
-          <!-- 1. Novos Seguidores -->
-          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition flex flex-col justify-between">
-            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
-              <span>Novos Seguidores</span>
-              <div class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-              </div>
-            </div>
-            <div class="flex items-baseline gap-1.5">
-              <span id="metric-new-followers" class="text-2xl font-bold text-emerald-500">+0</span>
-              <span class="text-[11px] text-ig-grayText">nesta varredura</span>
-            </div>
-          </div>
-
-          <!-- 2. Deixaram de te Seguir -->
-          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-rose-500/50 transition flex flex-col justify-between">
-            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
-              <span>Deixaram de Seguir</span>
-              <div class="w-6 h-6 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center">
-                <i data-lucide="user-minus" class="w-3.5 h-3.5"></i>
-              </div>
-            </div>
-            <div class="flex items-baseline gap-1.5">
-              <span id="metric-lost-followers" class="text-2xl font-bold text-rose-500">-0</span>
-              <span class="text-[11px] text-ig-grayText">unfollows deles</span>
-            </div>
-          </div>
-
-          <!-- 3. Você Começou a Seguir -->
-          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-blue-500/50 transition flex flex-col justify-between">
-            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
-              <span>Começou a Seguir</span>
-              <div class="w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-              </div>
-            </div>
-            <div class="flex items-baseline gap-1.5">
-              <span id="metric-new-following" class="text-2xl font-bold text-blue-500">+0</span>
-              <span class="text-[11px] text-ig-grayText">seguidos seus</span>
-            </div>
-          </div>
-
-          <!-- 4. Você Deixou de Seguir -->
-          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-orange-500/50 transition flex flex-col justify-between">
-            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
-              <span>Você Deixou de Seguir</span>
-              <div class="w-6 h-6 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
-              </div>
-            </div>
-            <div class="flex items-baseline gap-1.5">
-              <span id="metric-lost-following" class="text-2xl font-bold text-orange-500">-0</span>
-              <span class="text-[11px] text-ig-grayText">unfollows seus</span>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- TIER 2: DIAGNÓSTICO E SAÚDE DA BASE -->
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-          
-          <!-- Amigos Mútuos -->
-          <div onclick="switchTab('tab-mutual')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-cyan-500/50 transition">
-            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
-              <span>Mútuos</span>
-              <i data-lucide="users" class="w-3.5 h-3.5 text-cyan-500"></i>
-            </div>
-            <div class="text-lg font-bold text-cyan-500" id="metric-mutual">0</div>
-          </div>
-
-          <!-- Não te Seguem -->
-          <div onclick="switchTab('tab-not-following-back')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-amber-500/50 transition">
-            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
-              <span>Não Seguem</span>
-              <i data-lucide="user-x" class="w-3.5 h-3.5 text-amber-500"></i>
-            </div>
-            <div class="text-lg font-bold text-amber-500" id="metric-not-following-back">0</div>
-          </div>
-
-          <!-- Fãs -->
-          <div onclick="switchTab('tab-fans')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-purple-500/50 transition">
-            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
-              <span>Seus Fãs</span>
-              <i data-lucide="heart" class="w-3.5 h-3.5 text-purple-500"></i>
-            </div>
-            <div class="text-lg font-bold text-purple-500" id="metric-fans">0</div>
-          </div>
-
-          <!-- Verificados VIP -->
-          <div onclick="switchTab('tab-verified')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-blue-500/50 transition">
-            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
-              <span>Verificados</span>
-              <i data-lucide="badge-check" class="w-3.5 h-3.5 text-blue-500"></i>
-            </div>
-            <div class="text-lg font-bold text-blue-500" id="metric-verified">0</div>
-          </div>
-
-          <!-- Fantasmas / Sem Foto -->
-          <div onclick="switchTab('tab-ghosts')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-3 rounded-xl cursor-pointer hover:border-zinc-500/50 transition col-span-2 sm:col-span-1">
-            <div class="flex items-center justify-between text-[11px] text-ig-grayText mb-1">
-              <span>Fantasmas</span>
-              <i data-lucide="ghost" class="w-3.5 h-3.5 text-zinc-400"></i>
-            </div>
-            <div class="text-lg font-bold text-zinc-400" id="metric-ghosts">0</div>
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- NAVIGATION TABS (Instagram Profile Tabs) -->
-      <div id="tabs-nav-container" class="border-t border-ig-lightBorder dark:border-ig-darkBorder">
-        <nav class="flex justify-start gap-4 sm:gap-6 -mt-px text-xs font-semibold uppercase tracking-wider text-ig-grayText overflow-x-auto no-scrollbar">
-          
-          <button onclick="switchTab('tab-changes')" id="btn-tab-changes" class="tab-btn active flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+          <button onclick="switchTab('tab-changes')" id="btn-tab-changes" class="tab-btn active flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="zap" class="w-4 h-4 text-emerald-500"></i>
             <span>Mudanças</span>
+            <span id="tab-badge-changes" class="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-mutual')" id="btn-tab-mutual" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="users" class="w-3.5 h-3.5 text-cyan-500"></i>
+          <button onclick="switchTab('tab-mutual')" id="btn-tab-mutual" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="users" class="w-4 h-4 text-cyan-500"></i>
             <span>Mútuos</span>
+            <span id="tab-badge-mutual" class="text-[10px] bg-cyan-500/10 text-cyan-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-not-following-back')" id="btn-tab-not-following-back" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="user-x" class="w-3.5 h-3.5 text-amber-500"></i>
+          <button onclick="switchTab('tab-not-following-back')" id="btn-tab-not-following-back" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="user-x" class="w-4 h-4 text-amber-500"></i>
             <span>Não te Seguem</span>
+            <span id="tab-badge-not-following" class="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-fans')" id="btn-tab-fans" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="heart" class="w-3.5 h-3.5 text-purple-500"></i>
+          <button onclick="switchTab('tab-fans')" id="btn-tab-fans" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="heart" class="w-4 h-4 text-purple-500"></i>
             <span>Fãs</span>
+            <span id="tab-badge-fans" class="text-[10px] bg-purple-500/10 text-purple-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-verified')" id="btn-tab-verified" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="badge-check" class="w-3.5 h-3.5 text-blue-500"></i>
-            <span>VIP / Selo Azul</span>
+          <button onclick="switchTab('tab-verified')" id="btn-tab-verified" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
+            <span>VIPs</span>
+            <span id="tab-badge-verified" class="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-ghosts')" id="btn-tab-ghosts" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="ghost" class="w-3.5 h-3.5 text-zinc-400"></i>
+          <button onclick="switchTab('tab-ghosts')" id="btn-tab-ghosts" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="ghost" class="w-4 h-4 text-zinc-400"></i>
             <span>Fantasmas</span>
+            <span id="tab-badge-ghosts" class="text-[10px] bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-chart')" id="btn-tab-chart" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+          <button onclick="switchTab('tab-chart')" id="btn-tab-chart" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="trending-up" class="w-4 h-4"></i>
             <span>Gráfico</span>
           </button>
 
-          <button onclick="switchTab('tab-ai')" id="btn-tab-ai" class="tab-btn flex items-center gap-1.5 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-500"></i>
+          <button onclick="switchTab('tab-ai')" id="btn-tab-ai" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+            <i data-lucide="sparkles" class="w-4 h-4 text-purple-500"></i>
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">Análise IA</span>
           </button>
         </nav>

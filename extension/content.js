@@ -93,7 +93,10 @@ async function fetchUserList(userId, type = "followers", onProgress) {
 
   // Up to 200 pages (~10,000 users)
   for (let page = 0; page < 200; page++) {
-    let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
+    let url = type === "followers" 
+      ? `/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page`
+      : `/api/v1/friendships/${userId}/following/?count=50`;
+
     if (maxId) {
       url += `&max_id=${encodeURIComponent(maxId)}`;
     }
@@ -117,13 +120,36 @@ async function fetchUserList(userId, type = "followers", onProgress) {
         });
       }
 
-      if (!res.ok) {
-        console.warn(`[InSnitch] Status ${res.status} ao coletar ${type}`);
-        break;
-      }
+      let pageUsers = [];
+      let nextCursor = null;
 
-      const data = await res.json();
-      const pageUsers = data.users || [];
+      if (res.ok) {
+        const data = await res.json();
+        pageUsers = data.users || [];
+        nextCursor = data.next_max_id;
+      } else {
+        // Fallback: GraphQL query
+        console.warn(`[InSnitch] REST falhou com status ${res.status}, tentando GraphQL para ${type}...`);
+        const queryHash = type === "followers" ? "58712303d941c6855d4e888c5f0cd22f" : "37479f2b8209594dde7ffb0d41ac5177";
+        const variables = JSON.stringify({ id: userId, first: 50, after: maxId || "" });
+        const gqlUrl = `/graphql/query/?query_hash=${queryHash}&variables=${encodeURIComponent(variables)}`;
+        const gqlRes = await fetch(gqlUrl, { headers, credentials: 'include' });
+        if (gqlRes.ok) {
+          const gqlData = await gqlRes.json();
+          const edge = type === "followers" ? gqlData?.data?.user?.edge_followed_by : gqlData?.data?.user?.edge_follow;
+          const edges = edge?.edges || [];
+          pageUsers = edges.map(e => ({
+            username: e.node?.username,
+            full_name: e.node?.full_name || "",
+            profile_pic_url: e.node?.profile_pic_url || "",
+            is_verified: e.node?.is_verified || false
+          }));
+          nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
+        } else {
+          console.error(`[InSnitch] Falha em REST e GraphQL para ${type}`);
+          break;
+        }
+      }
 
       for (const u of pageUsers) {
         const cleanName = (u.username || "").toLowerCase().trim();
@@ -137,6 +163,8 @@ async function fetchUserList(userId, type = "followers", onProgress) {
           is_verified: u.is_verified || false
         });
       }
+
+      maxId = nextCursor;
 
       if (onProgress) {
         onProgress(type, users.length);
