@@ -194,18 +194,19 @@ async function fetchUserList(userId, type = "followers", onProgress, options = {
   return users;
 }
 
-// Multi-pass collector to combine multiple sessions for large accounts (>1500 users)
+// Multi-pass collector to combine multiple sessions until reaching 100% of profile count
 async function collectCompleteUserList(userId, type = "followers", expectedTotal = 0, onProgress, options = {}) {
   const maxLimit = options.maxLimit || 10000;
   const targetTotal = Math.min(expectedTotal || maxLimit, maxLimit);
   const usersMap = new Map();
 
-  // For profiles with >1500 users, use up to 3 automatic passes to defeat Instagram pagination sampling
-  const maxPasses = (expectedTotal > 1500 && maxLimit > 1500) ? 3 : 1;
+  // Allow up to 10 passes for large accounts until target is met
+  const maxPasses = (expectedTotal > 1000 && maxLimit > 1000) ? 10 : 1;
+  let zeroProgressPasses = 0;
 
   for (let pass = 1; pass <= maxPasses; pass++) {
     const prevCount = usersMap.size;
-    const passPrefix = maxPasses > 1 ? `[Passagem ${pass}/${maxPasses}] ` : '';
+    const passPrefix = maxPasses > 1 ? `[Passagem ${pass}] ` : '';
 
     const pageUsers = await fetchUserList(userId, type, (t, count, extra) => {
       const currentCombined = Math.max(usersMap.size, count);
@@ -225,22 +226,34 @@ async function collectCompleteUserList(userId, type = "followers", expectedTotal
 
     const currentCount = usersMap.size;
     const newlyAdded = currentCount - prevCount;
-    console.log(`[InSnitch] Passagem ${pass}/${maxPasses} concluída para ${type}. Total acumulado: ${currentCount} (+${newlyAdded} novos)`);
+    console.log(`[InSnitch] Passagem ${pass} concluída para ${type}. Total acumulado: ${currentCount}/${targetTotal} (+${newlyAdded} novos)`);
 
-    // If reached close to 100% of target or base stabilized
-    if (targetTotal > 0 && currentCount >= targetTotal * 0.98) {
-      break;
-    }
-    if (pass > 1 && newlyAdded < 10) {
-      console.log(`[InSnitch] Base estabilizada (poucos novos na passagem ${pass}), finalizando ${type}.`);
+    // 1. Exact or exceeded target reached -> Stop immediately!
+    if (targetTotal > 0 && currentCount >= targetTotal) {
+      console.log(`[InSnitch] Meta atingida com sucesso: ${currentCount}/${targetTotal} ${type}!`);
       break;
     }
 
-    if (pass < maxPasses) {
+    // 2. Track consecutive passes with 0 new users
+    if (newlyAdded === 0) {
+      zeroProgressPasses++;
+    } else {
+      zeroProgressPasses = 0;
+    }
+
+    // If 2 passes in a row found 0 new users, Instagram has exhausted all visible users
+    if (zeroProgressPasses >= 2) {
+      console.log(`[InSnitch] Base estabilizada no máximo entregue pelo Instagram (${currentCount}/${targetTotal}). Finalizando ${type}.`);
+      break;
+    }
+
+    // If not reached target and more passes allowed, pause and start next pass
+    if (pass < maxPasses && currentCount < targetTotal) {
+      const remaining = targetTotal - currentCount;
       if (onProgress) {
-        onProgress(type, currentCount, `Passagem ${pass} concluída (${currentCount} catalogados). Otimizando passagem ${pass + 1}...`);
+        onProgress(type, currentCount, `Passagem ${pass}: ${currentCount}/${targetTotal} catalogados. Buscando ${remaining} restantes na passagem ${pass + 1}...`);
       }
-      await new Promise(r => setTimeout(r, 2500));
+      await new Promise(r => setTimeout(r, 2000));
     }
   }
 
