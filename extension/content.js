@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - Proven Stable Collector
+// InSnitch Content Script - Proven Stable Collector
 console.log("[InSnitch] Content script carregado.");
 
 function getCookie(name) {
@@ -228,21 +228,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const expectedFollowers = profileInfo.followers_count || 0;
         const expectedFollowing = profileInfo.following_count || 0;
 
+        console.log("[InSnitch] Perfil identificado:", profileInfo.username, "ID:", targetId, "Seguidores esperados:", expectedFollowers);
+
         // 1. Coleta Seguidores
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
+        console.log("[InSnitch] Iniciando coleta de SEGUIDORES...");
         const followers = await fetchUserList(targetId, "followers", (type, count, extraMsg) => {
           const perc = expectedFollowers > 0 ? ` (${Math.min(100, Math.round((count / expectedFollowers) * 100))}%)` : '';
           const msg = extraMsg || `Coletando seguidores: ${count}${expectedFollowers ? ` de ${expectedFollowers}` : ''}${perc}...`;
           chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
         }, scanOptions);
+        console.log(`[InSnitch] SEGUIDORES coletados com sucesso: ${followers.length}`);
 
         // 2. Coleta Seguidos
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
+        console.log("[InSnitch] Iniciando coleta de SEGUIDOS...");
         const following = await fetchUserList(targetId, "following", (type, count, extraMsg) => {
           const perc = expectedFollowing > 0 ? ` (${Math.min(100, Math.round((count / expectedFollowing) * 100))}%)` : '';
           const msg = extraMsg || `Coletando seguindo: ${count}${expectedFollowing ? ` de ${expectedFollowing}` : ''}${perc}...`;
           chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
         }, scanOptions);
+        console.log(`[InSnitch] SEGUIDOS coletados com sucesso: ${following.length}`);
 
         if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {
           sendResponse({ 

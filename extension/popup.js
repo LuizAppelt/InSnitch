@@ -1,4 +1,4 @@
-﻿const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = "http://127.0.0.1:8000";
 
 let currentDetectedUsername = null;
 let currentTabId = null;
@@ -136,15 +136,7 @@ function setupEventListeners() {
     const delay = mode === "fast" ? 350 : 750;
 
     try {
-      // Auto-inject content script proactively
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: currentTabId },
-          files: ['content.js']
-        });
-      } catch (e) {}
-
-      // Send message to content script
+      // Send message directly to content script
       chrome.tabs.sendMessage(
         currentTabId,
         { 
