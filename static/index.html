@@ -122,38 +122,53 @@
     <!-- MAIN CONTENT AREA -->
     <main class="flex-1 flex flex-col min-w-0 max-w-5xl mx-auto px-4 md:px-8 py-6">
       
-      <!-- TOP SEARCH BAR -->
+      <!-- TOP PROFILE SWITCHER & CONTROLS -->
       <header class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-6 mb-6 border-b border-ig-lightBorder dark:border-ig-darkBorder">
-        <div class="relative w-full sm:w-96">
-          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-ig-grayText">
-            <i data-lucide="search" class="w-4 h-4"></i>
+        
+        <!-- Left: Profile Selector -->
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="w-9 h-9 rounded-full bg-ig-primary/10 text-ig-primary flex items-center justify-center font-bold text-xs flex-shrink-0">
+            <i data-lucide="users" class="w-4 h-4"></i>
           </div>
-          <input 
-            type="text" 
-            id="search-input" 
-            placeholder="Digite @usuario ou link do perfil..." 
-            class="w-full pl-10 pr-4 py-2 text-sm rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none transition"
-            onkeydown="if(event.key === 'Enter') handleSearchSubmit()"
-          />
+          <div class="flex flex-col min-w-0">
+            <span class="text-[10px] text-ig-grayText uppercase tracking-wider font-bold">Perfil em Análise</span>
+            <select id="select-active-profile" onchange="switchActiveProfile(this.value)" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-xs font-semibold text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+              <option value="">Carregando perfis...</option>
+            </select>
+          </div>
         </div>
 
-        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <!-- Toggle Mode Badge -->
-          <div class="flex items-center gap-2 bg-ig-lightHover dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder px-3 py-1.5 rounded-full text-xs">
-            <span class="text-ig-grayText font-medium">Modo:</span>
-            <button id="mode-toggle-btn" onclick="toggleScanMode()" class="font-semibold text-emerald-500 hover:underline flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span id="mode-text">Simulação (Demo)</span>
-            </button>
-          </div>
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <button onclick="confirmDeleteCurrentProfile()" id="btn-delete-profile" class="text-rose-500 hover:bg-rose-500/10 border border-rose-500/30 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Excluir Perfil</span>
+          </button>
 
-          <!-- Fast Scan Button -->
-          <button onclick="handleSearchSubmit()" id="btn-scan-main" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-5 py-2 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm transition active:scale-95 disabled:opacity-50">
-            <i data-lucide="refresh-cw" id="scan-spinner" class="w-4 h-4"></i>
-            <span>Escanear</span>
+          <button onclick="openExtensionModal()" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+            <i data-lucide="puzzle" class="w-3.5 h-3.5"></i>
+            <span>Sincronizar Extensão</span>
           </button>
         </div>
       </header>
+
+      <!-- EMPTY STATE (When no profiles exist) -->
+      <section id="empty-state-view" class="hidden py-16 flex flex-col items-center justify-center text-center">
+        <div class="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
+          <i data-lucide="puzzle" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-lg font-bold">Nenhum Perfil Sincronizado Ainda</h2>
+        <p class="text-xs text-ig-grayText max-w-md mt-1 mb-6">
+          Abra o Instagram no seu navegador e clique no ícone da extensão <strong>InSnitch</strong> para sincronizar seus seguidores e seguidos com 1 clique!
+        </p>
+        <button onclick="openExtensionModal()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-md flex items-center gap-2">
+          <i data-lucide="puzzle" class="w-4 h-4"></i>
+          <span>Como Usar a Extensão</span>
+        </button>
+      </section>
+
+      <!-- DASHBOARD CONTAINER -->
+      <div id="dashboard-main-content">
 
       <!-- PROFILE BANNER SECTION (Instagram Profile Header Style) -->
       <section id="profile-header-section" class="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-12 pb-8 border-b border-ig-lightBorder dark:border-ig-darkBorder">
@@ -184,13 +199,9 @@
             </span>
 
             <div class="flex items-center gap-2 ml-0 md:ml-2">
-              <button onclick="triggerRescan()" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder px-4 py-1.5 rounded-lg text-xs font-semibold hover:bg-ig-lightBorder dark:hover:bg-ig-darkBorder transition flex items-center gap-1.5">
-                <i data-lucide="scan" class="w-3.5 h-3.5"></i>
-                Nova Verificação
-              </button>
               <button onclick="switchTab('tab-ai')" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition flex items-center gap-1.5 shadow-sm">
                 <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-                Analisar com IA
+                <span>Analisar com IA</span>
               </button>
             </div>
           </div>
@@ -483,13 +494,18 @@
                 </h3>
                 <p class="text-xs text-ig-grayText mt-0.5">Pessoas que te seguem e você também segue de volta.</p>
               </div>
-              <div class="relative w-full sm:w-64">
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+                  <option value="alpha_desc">🔤 Nome (Z → A)</option>
+                </select>
                 <input 
                   type="text" 
                   id="search-mutual" 
                   placeholder="Filtrar amigos mútuos..." 
                   oninput="filterReciprocityList('mutual')" 
-                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
                 />
               </div>
             </div>
@@ -510,13 +526,18 @@
                 </h3>
                 <p class="text-xs text-ig-grayText mt-0.5">Perfis que você segue, mas não retribuem o follow.</p>
               </div>
-              <div class="relative w-full sm:w-64">
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+                  <option value="alpha_desc">🔤 Nome (Z → A)</option>
+                </select>
                 <input 
                   type="text" 
                   id="search-not-following" 
                   placeholder="Filtrar contas..." 
                   oninput="filterReciprocityList('not_following_back')" 
-                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
                 />
               </div>
             </div>
@@ -537,13 +558,18 @@
                 </h3>
                 <p class="text-xs text-ig-grayText mt-0.5">Seguidores que acompanham você, mas você não segue de volta.</p>
               </div>
-              <div class="relative w-full sm:w-64">
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+                  <option value="alpha_desc">🔤 Nome (Z → A)</option>
+                </select>
                 <input 
                   type="text" 
                   id="search-fans" 
                   placeholder="Filtrar fãs..." 
                   oninput="filterReciprocityList('fans')" 
-                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
                 />
               </div>
             </div>
@@ -564,13 +590,18 @@
                 </h3>
                 <p class="text-xs text-ig-grayText mt-0.5">Figuras públicas, criadores e marcas com selo oficial que te seguem.</p>
               </div>
-              <div class="relative w-full sm:w-64">
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+                  <option value="alpha_desc">🔤 Nome (Z → A)</option>
+                </select>
                 <input 
                   type="text" 
                   id="search-verified" 
                   placeholder="Filtrar verificados..." 
                   oninput="filterReciprocityList('verified')" 
-                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
                 />
               </div>
             </div>
@@ -591,13 +622,18 @@
                 </h3>
                 <p class="text-xs text-ig-grayText mt-0.5">Contas sem foto de perfil ou perfis suspeitos de inatividade.</p>
               </div>
-              <div class="relative w-full sm:w-64">
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+                  <option value="alpha_desc">🔤 Nome (Z → A)</option>
+                </select>
                 <input 
                   type="text" 
                   id="search-ghosts" 
                   placeholder="Filtrar contas fantasmas..." 
                   oninput="filterReciprocityList('ghosts')" 
-                  class="w-full px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
                 />
               </div>
             </div>
@@ -654,18 +690,18 @@
           </div>
         </div>
 
-      </section>
+      </div> <!-- END #dashboard-main-content -->
 
       <!-- SAVED PROFILES VIEW (Alternative View) -->
       <section id="saved-profiles-view" class="hidden mt-4">
         <div class="flex items-center justify-between mb-6">
           <div>
-            <h2 class="text-xl font-bold">Perfis Rastreados</h2>
-            <p class="text-xs text-ig-grayText">Histórico de contas monitoradas neste computador.</p>
+            <h2 class="text-xl font-bold">Perfis Sincronizados</h2>
+            <p class="text-xs text-ig-grayText">Contas importadas através da extensão InSnitch.</p>
           </div>
-          <button onclick="openTrackModal()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            Adicionar Perfil
+          <button onclick="openExtensionModal()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <i data-lucide="puzzle" class="w-4 h-4"></i>
+            Sincronizar Nova Conta
           </button>
         </div>
 
@@ -678,13 +714,34 @@
 
   </div>
 
-  <!-- MODAL: SETTINGS (API KEY & SESSION) -->
+  <!-- MODAL: DELETE PROFILE CONFIRMATION -->
+  <div id="delete-profile-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-center">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="trash-2" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold">Excluir Perfil?</h3>
+      <p class="text-xs text-ig-grayText mt-1 mb-6">
+        Tem certeza que deseja excluir todos os dados e histórico de <span id="delete-target-username" class="font-bold text-rose-500">@usuario</span>? Esta ação não pode ser desfeita.
+      </p>
+      <div class="flex items-center justify-center gap-3">
+        <button onclick="closeDeleteModal()" class="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-ig-lightHover dark:hover:bg-ig-darkHover">
+          Cancelar
+        </button>
+        <button onclick="executeDeleteCurrentProfile()" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md">
+          Sim, Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS (API KEY) -->
   <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
       <div class="flex items-center justify-between pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
         <div class="flex items-center gap-2.5 font-bold text-base">
           <i data-lucide="settings" class="w-5 h-5 text-ig-primary"></i>
-          <span>Configurações & Chaves</span>
+          <span>Configurações & Chave IA</span>
         </div>
         <button onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -700,26 +757,7 @@
             placeholder="AIzaSy..." 
             class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
           />
-          <p class="text-[10px] text-ig-grayText mt-1">Usada para gerar relatórios detalhados com o Gemini.</p>
-        </div>
-
-        <div>
-          <label class="font-semibold block mb-1">Cookie de Sessão do Instagram (sessionid):</label>
-          <input 
-            type="password" 
-            id="setting-session-cookie" 
-            placeholder="Ex: 582910294%3Afjka8..." 
-            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
-          />
-          <p class="text-[10px] text-ig-grayText mt-1">Opcional para modo Real. Se vazio, o modo Simulação funciona perfeitamente.</p>
-        </div>
-
-        <div class="flex items-center justify-between pt-2">
-          <label class="font-semibold">Modo Padrão:</label>
-          <select id="setting-default-mode" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-lg px-2.5 py-1.5">
-            <option value="true">Simulação / Demonstração (Recomendado)</option>
-            <option value="false">Conexão Real Instagram</option>
-          </select>
+          <p class="text-[10px] text-ig-grayText mt-1">Usada para gerar diagnósticos e relatórios inteligentes com o Gemini.</p>
         </div>
       </div>
 
@@ -733,6 +771,8 @@
       </div>
     </div>
   </div>
+
+
 
   <!-- MODAL: EXTENSION GUIDE -->
   <div id="extension-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">

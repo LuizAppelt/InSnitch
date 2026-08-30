@@ -134,6 +134,23 @@ def get_all_profiles() -> List[Dict[str, Any]]:
     conn.close()
     return [dict(r) for r in rows]
 
+def delete_profile_by_username(username: str) -> bool:
+    clean_username = username.lower().replace("@", "").strip()
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM profiles WHERE username = ?", (clean_username,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+    
+    profile_id = row["id"]
+    cursor.execute("PRAGMA foreign_keys = ON;")
+    cursor.execute("DELETE FROM profiles WHERE id = ?", (profile_id,))
+    conn.commit()
+    conn.close()
+    return True
+
 def save_snapshot(
     profile_id: int,
     followers_count: int,

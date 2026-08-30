@@ -3,15 +3,13 @@ let currentProfile = null;
 let currentDiff = null;
 let currentHistoryEvents = null;
 let changesViewMode = 'all_time'; // 'all_time' or 'latest'
+let sortOrder = 'recent'; // 'recent' | 'alpha_asc' | 'alpha_desc'
 let currentReciprocity = { not_following_back: [], fans: [], mutual: [], verified: [], ghosts: [] };
 let chartInstance = null;
-let isMockMode = false;
 let isScanning = false;
+let allProfilesList = [];
 
 // DOM Elements
-const searchInput = document.getElementById("search-input");
-const btnScanMain = document.getElementById("btn-scan-main");
-const scanSpinner = document.getElementById("scan-spinner");
 const avatarRing = document.getElementById("avatar-ring");
 const profileAvatar = document.getElementById("profile-avatar");
 const profileUsername = document.getElementById("profile-username");
@@ -50,20 +48,18 @@ const listVerified = document.getElementById("list-verified");
 const listGhosts = document.getElementById("list-ghosts");
 const aiOutputContainer = document.getElementById("ai-output-container");
 const aiSpinner = document.getElementById("ai-spinner");
-const modeToggleBtn = document.getElementById("mode-toggle-btn");
-const modeText = document.getElementById("mode-text");
 
 // Initialize on page load
 document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   lucide.createIcons();
   await loadSettings();
-  await loadInitialProfile();
+  await loadProfilesList();
 });
 
 // Theme Toggle
 function initTheme() {
-  const savedTheme = localStorage.getItem("insta_tracker_theme") || "dark";
+  const savedTheme = localStorage.getItem("insnitch_theme") || "dark";
   if (savedTheme === "dark") {
     document.documentElement.classList.add("dark");
   } else {
@@ -74,7 +70,7 @@ function initTheme() {
 
 function toggleTheme() {
   const isDark = document.documentElement.classList.toggle("dark");
-  localStorage.setItem("insta_tracker_theme", isDark ? "dark" : "light");
+  localStorage.setItem("insnitch_theme", isDark ? "dark" : "light");
   updateThemeUI();
   if (chartInstance && currentProfile) {
     loadChart(currentProfile.username);
@@ -86,32 +82,16 @@ function updateThemeUI() {
   const themeIcon = document.getElementById("theme-icon");
   const themeText = document.getElementById("theme-text");
   
-  if (isDark) {
-    themeIcon.setAttribute("data-lucide", "sun");
-    themeText.innerText = "Modo Claro";
-  } else {
-    themeIcon.setAttribute("data-lucide", "moon");
-    themeText.innerText = "Modo Escuro";
+  if (themeIcon) {
+    if (isDark) {
+      themeIcon.setAttribute("data-lucide", "sun");
+      if (themeText) themeText.innerText = "Modo Claro";
+    } else {
+      themeIcon.setAttribute("data-lucide", "moon");
+      if (themeText) themeText.innerText = "Modo Escuro";
+    }
   }
   lucide.createIcons();
-}
-
-// Scan Mode Toggle (Mock vs Real)
-function toggleScanMode() {
-  isMockMode = !isMockMode;
-  updateScanModeUI();
-}
-
-function updateScanModeUI() {
-  if (isMockMode) {
-    modeText.innerText = "Simulação (Demo)";
-    modeToggleBtn.className = "font-semibold text-emerald-500 hover:underline flex items-center gap-1";
-    showToast("Modo Simulação ativado (Demo segura e rápida)", "info");
-  } else {
-    modeText.innerText = "Instagram Real";
-    modeToggleBtn.className = "font-semibold text-ig-primary hover:underline flex items-center gap-1";
-    showToast("Modo Real ativado (Conecta via sessão Instagram)", "warning");
-  }
 }
 
 // Load Settings from Backend
@@ -120,13 +100,9 @@ async function loadSettings() {
     const res = await fetch("/api/settings");
     const data = await res.json();
     if (data) {
-      isMockMode = data.mock_mode_default;
-      updateScanModeUI();
       if (data.has_gemini_key) {
-        document.getElementById("setting-gemini-key").placeholder = "Chave configurada (" + data.gemini_api_key_masked + ")";
-      }
-      if (data.has_session_cookie) {
-        document.getElementById("setting-session-cookie").placeholder = "Cookie sessionid configurado";
+        const input = document.getElementById("setting-gemini-key");
+        if (input) input.placeholder = "Chave configurada (" + data.gemini_api_key_masked + ")";
       }
     }
   } catch (e) {
@@ -134,79 +110,92 @@ async function loadSettings() {
   }
 }
 
-// Load Initial Profile or Demo
-async function loadInitialProfile() {
+// Multi-Profile Management
+async function loadProfilesList(selectUsername = null) {
   try {
     const res = await fetch("/api/profiles");
     const data = await res.json();
-    if (data.profiles && data.profiles.length > 0) {
-      await fetchProfileDiff(data.profiles[0].username);
-    } else {
-      // First time demo: auto track sample profile
-      await trackProfile("criador_tech", true);
+    allProfilesList = data.profiles || [];
+
+    const select = document.getElementById("select-active-profile");
+    const emptyView = document.getElementById("empty-state-view");
+    const dashView = document.getElementById("dashboard-main-content");
+    const btnDelete = document.getElementById("btn-delete-profile");
+
+    if (allProfilesList.length === 0) {
+      if (emptyView) emptyView.classList.remove("hidden");
+      if (dashView) dashView.classList.add("hidden");
+      if (btnDelete) btnDelete.classList.add("hidden");
+      if (select) select.innerHTML = '<option value="">Nenhum perfil sincronizado</option>';
+      currentProfile = null;
+      return;
     }
-  } catch (e) {
-    console.error("Erro ao inicializar perfil:", e);
+
+    if (emptyView) emptyView.classList.add("hidden");
+    if (dashView) dashView.classList.remove("hidden");
+    if (btnDelete) btnDelete.classList.remove("hidden");
+
+    let targetUsername = selectUsername;
+    if (!targetUsername && currentProfile) {
+      targetUsername = currentProfile.username;
+    }
+    if (!targetUsername || !allProfilesList.some(p => p.username === targetUsername)) {
+      targetUsername = allProfilesList[0].username;
+    }
+
+    if (select) {
+      select.innerHTML = allProfilesList.map(p => {
+        const snapCount = p.total_snapshots || 0;
+        return `<option value="${p.username}" ${p.username === targetUsername ? 'selected' : ''}>@${p.username} (${snapCount} ${snapCount === 1 ? 'varredura' : 'varreduras'})</option>`;
+      }).join('');
+    }
+
+    await fetchProfileDiff(targetUsername);
+  } catch (err) {
+    console.error("Erro ao carregar lista de perfis:", err);
   }
 }
 
-// Handle Search and Tracking
-async function handleSearchSubmit() {
-  const query = searchInput.value.trim();
-  if (!query) {
-    showToast("Por favor, digite um @usuario ou link do perfil", "error");
-    return;
-  }
-  await trackProfile(query, isMockMode);
+async function switchActiveProfile(username) {
+  if (!username) return;
+  await fetchProfileDiff(username);
 }
 
-function triggerRescan() {
-  if (currentProfile) {
-    trackProfile(currentProfile.username, isMockMode);
-  }
+// Delete Profile Confirmation
+function confirmDeleteCurrentProfile() {
+  if (!currentProfile) return;
+  const modal = document.getElementById("delete-profile-modal");
+  const targetName = document.getElementById("delete-target-username");
+  if (targetName) targetName.innerText = `@${currentProfile.username}`;
+  if (modal) modal.classList.remove("hidden");
 }
 
-async function trackProfile(usernameOrUrl, useMock) {
-  if (isScanning) return;
-  setScanningState(true);
+function closeDeleteModal() {
+  const modal = document.getElementById("delete-profile-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function executeDeleteCurrentProfile() {
+  if (!currentProfile) return;
+  const usernameToDelete = currentProfile.username;
+  closeDeleteModal();
 
   try {
-    const res = await fetch("/api/profiles/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username_or_url: usernameOrUrl,
-        use_mock: useMock
-      })
-    });
-
+    const res = await fetch(`/api/profiles/${usernameToDelete}`, { method: 'DELETE' });
     const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.detail || "Erro ao monitorar perfil.");
+    if (res.ok) {
+      showToast(`Perfil @${usernameToDelete} excluído com sucesso.`, "success");
+      currentProfile = null;
+      await loadProfilesList();
+    } else {
+      showToast(data.detail || "Erro ao excluir perfil.", "error");
     }
-
-    currentProfile = data.profile;
-    currentDiff = data.diff;
-    currentHistoryEvents = data.history_events || null;
-    currentReciprocity = data.diff.reciprocity;
-
-    renderProfileHeader(data.profile);
-    renderMetrics(data.diff);
-    renderSnapshotHistoryDropdown(data.history_events?.snapshots || []);
-    renderDiffs(data.diff);
-    renderReciprocityLists();
-    renderAiReport(data.ai_report);
-    loadChart(data.profile.username);
-
-    showToast(`Varredura concluída para @${data.profile.username}!`, "success");
   } catch (err) {
-    showToast(err.message, "error");
-  } finally {
-    setScanningState(false);
+    showToast(`Erro ao excluir perfil: ${err.message}`, "error");
   }
 }
 
+// Fetch Profile Diff & History
 async function fetchProfileDiff(username) {
   try {
     setScanningState(true);
@@ -225,6 +214,9 @@ async function fetchProfileDiff(username) {
       renderReciprocityLists();
       renderAiReport(data.ai_report);
       loadChart(data.profile.username);
+
+      const select = document.getElementById("select-active-profile");
+      if (select) select.value = data.profile.username;
     }
   } catch (e) {
     console.error("Erro ao buscar diff:", e);
@@ -236,14 +228,12 @@ async function fetchProfileDiff(username) {
 // UI State & Spinners
 function setScanningState(scanning) {
   isScanning = scanning;
-  if (scanning) {
-    btnScanMain.disabled = true;
-    scanSpinner.classList.add("animate-spin");
-    avatarRing.classList.add("scanning");
-  } else {
-    btnScanMain.disabled = false;
-    scanSpinner.classList.remove("animate-spin");
-    avatarRing.classList.remove("scanning");
+  if (avatarRing) {
+    if (scanning) {
+      avatarRing.classList.add("scanning");
+    } else {
+      avatarRing.classList.remove("scanning");
+    }
   }
 }
 
@@ -371,6 +361,25 @@ function createUserRowHtml(user, badgeType) {
   `;
 }
 
+// Sorting Helper
+function applySort(items) {
+  if (!items || !items.length) return [];
+  const copy = [...items];
+  if (sortOrder === 'alpha_asc') {
+    copy.sort((a, b) => a.username.localeCompare(b.username));
+  } else if (sortOrder === 'alpha_desc') {
+    copy.sort((a, b) => b.username.localeCompare(a.username));
+  }
+  return copy;
+}
+
+function onSortOrderChange(order) {
+  sortOrder = order;
+  document.querySelectorAll('.sort-select').forEach(sel => sel.value = order);
+  renderReciprocityLists();
+  renderDiffs(currentDiff);
+}
+
 // Render Diffs Tab (With All-Time Cumulative vs Single Scan support)
 function renderDiffs(diff) {
   let newFollowers = [];
@@ -381,20 +390,20 @@ function renderDiffs(diff) {
   const isAllTime = (changesViewMode === 'all_time') && currentHistoryEvents && (currentHistoryEvents.snapshots?.length > 1);
 
   if (isAllTime) {
-    newFollowers = currentHistoryEvents.all_time_events?.new_followers || [];
-    lostFollowers = currentHistoryEvents.all_time_events?.lost_followers || [];
-    newFollowing = currentHistoryEvents.all_time_events?.new_following || [];
-    lostFollowing = currentHistoryEvents.all_time_events?.lost_following || [];
+    newFollowers = applySort(currentHistoryEvents.all_time_events?.new_followers || []);
+    lostFollowers = applySort(currentHistoryEvents.all_time_events?.lost_followers || []);
+    newFollowing = applySort(currentHistoryEvents.all_time_events?.new_following || []);
+    lostFollowing = applySort(currentHistoryEvents.all_time_events?.lost_following || []);
 
     if (badgeCountNew) badgeCountNew.innerText = newFollowers.length;
     if (badgeCountLost) badgeCountLost.innerText = lostFollowers.length;
     if (badgeCountNewFollowing) badgeCountNewFollowing.innerText = newFollowing.length;
     if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowing.length;
   } else {
-    newFollowers = diff?.diffs?.new_followers || [];
-    lostFollowers = diff?.diffs?.lost_followers || [];
-    newFollowing = diff?.diffs?.new_following || [];
-    lostFollowing = diff?.diffs?.lost_following || [];
+    newFollowers = applySort(diff?.diffs?.new_followers || []);
+    lostFollowers = applySort(diff?.diffs?.lost_followers || []);
+    newFollowing = applySort(diff?.diffs?.new_following || []);
+    lostFollowing = applySort(diff?.diffs?.lost_following || []);
 
     if (badgeCountNew) badgeCountNew.innerText = newFollowers.length;
     if (badgeCountLost) badgeCountLost.innerText = lostFollowers.length;
@@ -542,24 +551,26 @@ function filterReciprocityList(type) {
     const list = (currentReciprocity.mutual || []).filter(u => 
       u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
     );
+    const sorted = applySort(list);
 
-    if (list.length === 0) {
+    if (sorted.length === 0) {
       listMutual.innerHTML = `
         <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
           <i data-lucide="users" class="w-6 h-6 mx-auto mb-2 opacity-50 text-cyan-500"></i>
-          <p>Nenhum amigo mútuo encontrado para o filtro.</p>
+          <p>Nenhum amigo mútuo encontrado.</p>
         </div>
       `;
     } else {
-      listMutual.innerHTML = list.map(u => createUserRowHtml(u, null)).join('');
+      listMutual.innerHTML = sorted.map(u => createUserRowHtml(u, null)).join('');
     }
   } else if (type === 'not_following_back' && listNotFollowingBack) {
     const searchVal = (document.getElementById("search-not-following")?.value || "").toLowerCase();
     const list = (currentReciprocity.not_following_back || []).filter(u => 
       u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
     );
+    const sorted = applySort(list);
 
-    if (list.length === 0) {
+    if (sorted.length === 0) {
       listNotFollowingBack.innerHTML = `
         <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
           <i data-lucide="check" class="w-6 h-6 mx-auto mb-2 opacity-50 text-amber-500"></i>
@@ -567,30 +578,32 @@ function filterReciprocityList(type) {
         </div>
       `;
     } else {
-      listNotFollowingBack.innerHTML = list.map(u => createUserRowHtml(u, null)).join('');
+      listNotFollowingBack.innerHTML = sorted.map(u => createUserRowHtml(u, null)).join('');
     }
   } else if (type === 'fans' && listFans) {
     const searchVal = (document.getElementById("search-fans")?.value || "").toLowerCase();
     const list = (currentReciprocity.fans || []).filter(u => 
       u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
     );
+    const sorted = applySort(list);
 
-    if (list.length === 0) {
+    if (sorted.length === 0) {
       listFans.innerHTML = `
         <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
           <p>Nenhum fã correspondente encontrado.</p>
         </div>
       `;
     } else {
-      listFans.innerHTML = list.map(u => createUserRowHtml(u, null)).join('');
+      listFans.innerHTML = sorted.map(u => createUserRowHtml(u, null)).join('');
     }
   } else if (type === 'verified' && listVerified) {
     const searchVal = (document.getElementById("search-verified")?.value || "").toLowerCase();
     const list = (currentReciprocity.verified_followers || currentReciprocity.verified || []).filter(u => 
       u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
     );
+    const sorted = applySort(list);
 
-    if (list.length === 0) {
+    if (sorted.length === 0) {
       listVerified.innerHTML = `
         <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
           <i data-lucide="badge-check" class="w-6 h-6 mx-auto mb-2 opacity-50 text-blue-500"></i>
@@ -598,15 +611,16 @@ function filterReciprocityList(type) {
         </div>
       `;
     } else {
-      listVerified.innerHTML = list.map(u => createUserRowHtml(u, 'verified')).join('');
+      listVerified.innerHTML = sorted.map(u => createUserRowHtml(u, 'verified')).join('');
     }
   } else if (type === 'ghosts' && listGhosts) {
     const searchVal = (document.getElementById("search-ghosts")?.value || "").toLowerCase();
     const list = (currentReciprocity.ghost_followers || currentReciprocity.ghosts || []).filter(u => 
       u.username.toLowerCase().includes(searchVal) || (u.full_name && u.full_name.toLowerCase().includes(searchVal))
     );
+    const sorted = applySort(list);
 
-    if (list.length === 0) {
+    if (sorted.length === 0) {
       listGhosts.innerHTML = `
         <div class="col-span-full text-center py-8 text-ig-grayText text-xs">
           <i data-lucide="smile" class="w-6 h-6 mx-auto mb-2 opacity-50 text-emerald-500"></i>
@@ -614,7 +628,7 @@ function filterReciprocityList(type) {
         </div>
       `;
     } else {
-      listGhosts.innerHTML = list.map(u => createUserRowHtml(u, 'ghost')).join('');
+      listGhosts.innerHTML = sorted.map(u => createUserRowHtml(u, 'ghost')).join('');
     }
   }
   lucide.createIcons();

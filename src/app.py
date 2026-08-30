@@ -13,6 +13,7 @@ from src.database import (
     save_profile,
     get_profile_by_username,
     get_all_profiles,
+    delete_profile_by_username,
     save_snapshot,
     get_snapshots_for_profile,
     get_latest_two_snapshots,
@@ -243,6 +244,19 @@ async def extension_import(req: ExtensionImportRequest):
         "history_events": history_events,
         "ai_report": ai_report_text
     }
+
+@app.get("/api/profiles")
+async def list_profiles():
+    profiles = get_all_profiles()
+    return {"profiles": profiles}
+
+@app.delete("/api/profiles/{username}")
+async def delete_profile_endpoint(username: str):
+    clean_username = sanitize_username(username)
+    success = delete_profile_by_username(clean_username)
+    if not success:
+        raise HTTPException(status_code=404, detail="Perfil não encontrado para exclusão.")
+    return {"success": True, "message": f"Perfil @{clean_username} excluído com sucesso."}
 
 @app.get("/api/profiles/{username}/diff")
 async def get_profile_diff(username: str):
