@@ -248,21 +248,18 @@ function setScanningState(scanning) {
 }
 
 function handleAvatarError(img) {
-  if (img.dataset.proxied) {
+  img.onerror = null; // Prevent loop
+  if (!img.dataset.proxied && img.src && !img.src.includes('/api/image-proxy')) {
+    img.dataset.proxied = "true";
+    img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+  } else {
     img.src = `https://ui-avatars.com/api/?name=${(currentProfile && currentProfile.username) || 'IG'}&background=0095f6&color=fff&size=300`;
-    return;
   }
-  img.dataset.proxied = "true";
-  img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
 }
 
 function handleRowImageError(img, username) {
-  if (img.dataset.proxied) {
-    img.src = `https://ui-avatars.com/api/?name=${username}&background=random&color=fff&size=150`;
-    return;
-  }
-  img.dataset.proxied = "true";
-  img.src = `/api/image-proxy?url=${encodeURIComponent(img.src)}`;
+  img.onerror = null; // Prevent loop
+  img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff&size=150`;
 }
 
 // Render Profile Header
@@ -273,7 +270,7 @@ function renderProfileHeader(profile) {
   
   if (profile.profile_pic_url) {
     profileAvatar.removeAttribute("data-proxied");
-    profileAvatar.src = `/api/image-proxy?url=${encodeURIComponent(profile.profile_pic_url)}`;
+    profileAvatar.src = profile.profile_pic_url;
   } else {
     profileAvatar.src = `https://ui-avatars.com/api/?name=${profile.username}&background=0095f6&color=fff&size=300`;
   }
@@ -327,7 +324,7 @@ function formatEventDate(ts) {
 // Render User Row Item Helper
 function createUserRowHtml(user, badgeType) {
   const rawAvatar = user.profile_pic_url;
-  const avatar = rawAvatar ? `/api/image-proxy?url=${encodeURIComponent(rawAvatar)}` : `https://ui-avatars.com/api/?name=${user.username}&background=random&color=fff`;
+  const avatar = rawAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=random&color=fff`;
   
   let badgeHtml = '';
   if (badgeType === 'new') {
@@ -354,7 +351,7 @@ function createUserRowHtml(user, badgeType) {
   return `
     <div class="user-row flex items-center justify-between p-2.5 rounded-xl bg-ig-lightHover/50 dark:bg-ig-darkHover/50 border border-ig-lightBorder/50 dark:border-ig-darkBorder/50">
       <div class="flex items-center gap-3 min-w-0">
-        <img src="${avatar}" alt="${user.username}" referrerpolicy="no-referrer" onerror="handleRowImageError(this, '${user.username}')" class="w-10 h-10 rounded-full object-cover border border-ig-lightBorder dark:border-ig-darkBorder flex-shrink-0" />
+        <img src="${avatar}" alt="${user.username}" loading="lazy" referrerpolicy="no-referrer" onerror="handleRowImageError(this, '${user.username}')" class="w-10 h-10 rounded-full object-cover border border-ig-lightBorder dark:border-ig-darkBorder flex-shrink-0" />
         <div class="min-w-0">
           <div class="flex items-center gap-1.5">
             <span class="font-semibold text-xs truncate">@${user.username}</span>

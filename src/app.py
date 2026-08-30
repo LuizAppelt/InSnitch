@@ -369,18 +369,31 @@ async def update_app_settings(req: SettingsRequest):
     if req.mock_mode_default is not None:
         set_setting("mock_mode_default", "true" if req.mock_mode_default else "false")
 
+_IMAGE_CACHE: Dict[str, Tuple[bytes, str]] = {}
+
 @app.get("/api/image-proxy")
 async def image_proxy(url: str = Query(...)):
     import requests
     from fastapi.responses import Response
+    
+    if url in _IMAGE_CACHE:
+        content, content_type = _IMAGE_CACHE[url]
+        return Response(
+            content=content, 
+            media_type=content_type, 
+            headers={"Cache-Control": "public, max-age=86400"}
+        )
+
     try:
         resp = requests.get(
             url, 
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
-            timeout=8
+            timeout=5
         )
         if resp.status_code == 200:
             content_type = resp.headers.get("Content-Type", "image/jpeg")
+            if len(_IMAGE_CACHE) < 500:
+                _IMAGE_CACHE[url] = (resp.content, content_type)
             return Response(
                 content=resp.content, 
                 media_type=content_type,
