@@ -1,4 +1,4 @@
-const BACKEND_URL = "http://127.0.0.1:8000";
+﻿const BACKEND_URL = "http://127.0.0.1:8000";
 
 let currentDetectedUsername = null;
 let currentTabId = null;
@@ -64,7 +64,7 @@ async function detectActiveTabProfile() {
       btnSync.disabled = false;
     } else {
       usernameEl.innerText = "Feed / Página Inicial";
-      hintEl.innerText = "Navegue até a página de um perfil para coletar.";
+      hintEl.innerText = "Navegue até a página de um perfil para sincronizar.";
       btnSync.disabled = true;
     }
   } catch (e) {
@@ -84,36 +84,6 @@ chrome.runtime.onMessage.addListener((msg) => {
 function setupEventListeners() {
   const btnSync = document.getElementById("btn-sync");
   const btnOpenDashboard = document.getElementById("btn-open-dashboard");
-  const btnToggleOptions = document.getElementById("btn-toggle-options");
-  const optionsPanel = document.getElementById("options-panel");
-  const optionsArrow = document.getElementById("options-arrow");
-  const selectMode = document.getElementById("select-scan-mode");
-  const selectLimit = document.getElementById("select-scan-limit");
-
-  // Load saved options
-  const savedMode = localStorage.getItem("insnitch_scan_mode") || "safe";
-  const savedLimit = localStorage.getItem("insnitch_scan_limit") || "3000";
-  if (selectMode) selectMode.value = savedMode;
-  if (selectLimit) selectLimit.value = savedLimit;
-
-  if (selectMode) {
-    selectMode.addEventListener("change", () => {
-      localStorage.setItem("insnitch_scan_mode", selectMode.value);
-    });
-  }
-
-  if (selectLimit) {
-    selectLimit.addEventListener("change", () => {
-      localStorage.setItem("insnitch_scan_limit", selectLimit.value);
-    });
-  }
-
-  if (btnToggleOptions && optionsPanel) {
-    btnToggleOptions.addEventListener("click", () => {
-      const isHidden = optionsPanel.classList.toggle("hidden");
-      if (optionsArrow) optionsArrow.innerText = isHidden ? "▸" : "▾";
-    });
-  }
 
   btnSync.addEventListener("click", async () => {
     if (!currentDetectedUsername || !currentTabId) return;
@@ -128,27 +98,20 @@ function setupEventListeners() {
     resultCard.classList.add("hidden");
     errorBox.classList.add("hidden");
     btnSync.disabled = true;
-    progressText.innerText = "Iniciando coleta na aba ativa...";
-
-    // Determine delay and limit from options
-    const mode = selectMode ? selectMode.value : "safe";
-    const limit = selectLimit ? parseInt(selectLimit.value) : 3000;
-    const delay = mode === "fast" ? 350 : 750;
+    progressText.innerText = "Iniciando coleta...";
 
     try {
-      // Send message directly to content script
       chrome.tabs.sendMessage(
         currentTabId,
         { 
           action: "EXTRACT_ALL_DATA", 
-          username: currentDetectedUsername,
-          options: { delay, maxLimit: limit }
+          username: currentDetectedUsername
         },
         async (response) => {
           if (chrome.runtime.lastError) {
             progressBox.classList.add("hidden");
             errorBox.classList.remove("hidden");
-            errorText.innerText = "Recarregue a página do Instagram (F5) e clique em Sincronizar.";
+            errorText.innerText = "Recarregue a página do Instagram (F5) e tente novamente.";
             btnSync.disabled = false;
             return;
           }
@@ -161,7 +124,7 @@ function setupEventListeners() {
             return;
           }
 
-          progressText.innerText = "Enviando dados para o InSnitch...";
+          progressText.innerText = "Gravando no InSnitch Dashboard...";
 
           // Send extracted data to local backend
           try {
