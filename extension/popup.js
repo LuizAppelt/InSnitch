@@ -135,8 +135,8 @@ function setupEventListeners() {
     const limit = selectLimit ? parseInt(selectLimit.value) : 3000;
     const delay = mode === "fast" ? 350 : 750;
 
-    try {
-      // Send message to content script in active tab with options
+    // Helper to send extraction message to tab
+    const sendExtractMessage = () => {
       chrome.tabs.sendMessage(
         currentTabId,
         { 
@@ -146,10 +146,38 @@ function setupEventListeners() {
         },
         async (response) => {
           if (chrome.runtime.lastError) {
-            progressBox.classList.add("hidden");
-            errorBox.classList.remove("hidden");
-            errorText.innerText = "Recarregue a página do Instagram (F5) e tente novamente.";
-            btnSync.disabled = false;
+            console.warn("[InSnitch] Tentando reinjetar script devido a:", chrome.runtime.lastError.message);
+            // Auto inject script and retry once
+            try {
+              await chrome.scripting.executeScript({
+                target: { tabId: currentTabId },
+                files: ['content.js']
+              });
+              // Second attempt
+              chrome.tabs.sendMessage(
+                currentTabId,
+                { 
+                  action: "EXTRACT_ALL_DATA", 
+                  username: currentDetectedUsername,
+                  options: { delay, maxLimit: limit }
+                },
+                async (retryResponse) => {
+                  if (chrome.runtime.lastError || !retryResponse) {
+                    progressBox.classList.add("hidden");
+                    errorBox.classList.remove("hidden");
+                    errorText.innerText = "Recarregue a página do Instagram (F5) e clique em Sincronizar.";
+                    btnSync.disabled = false;
+                    return;
+                  }
+                  await handleExtractSuccess(retryResponse);
+                }
+              );
+            } catch (injectErr) {
+              progressBox.classList.add("hidden");
+              errorBox.classList.remove("hidden");
+              errorText.innerText = "Recarregue a página do Instagram (F5) e tente novamente.";
+              btnSync.disabled = false;
+            }
             return;
           }
 
@@ -161,41 +189,59 @@ function setupEventListeners() {
             return;
           }
 
-          progressText.innerText = "Enviando dados para o InSnitch...";
-
-          // Send extracted data to local backend
-          try {
-            const backendRes = await fetch(`${BACKEND_URL}/api/extension/import`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(response.data)
-            });
-
-            if (!backendRes.ok) {
-              const errData = await backendRes.json();
-              throw new Error(errData.detail || "Falha ao gravar no dashboard.");
-            }
-
-            const importResult = await backendRes.json();
-            const counts = importResult.diff?.counts || {};
-
-            // Show Result
-            progressBox.classList.add("hidden");
-            resultCard.classList.remove("hidden");
-
-            document.getElementById("res-new").innerText = `+${counts.new_followers_count || 0}`;
-            document.getElementById("res-lost").innerText = `-${counts.lost_followers_count || 0}`;
-            document.getElementById("res-following").innerText = `+${counts.new_following_count || 0}`;
-            document.getElementById("res-not-following").innerText = (counts.not_following_back_count || 0).toLocaleString();
-
-          } catch (backendErr) {
-            progressBox.classList.add("hidden");
-            errorBox.classList.remove("hidden");
-            errorText.innerText = `Erro no Dashboard: ${backendErr.message}. Verifique se 'python run.py' está rodando.`;
-            btnSync.disabled = false;
-          }
+          await handleExtractSuccess(response);
         }
       );
+    };
+
+    const handleExtractSuccess = async (response) => {
+      progressText.innerText = "Enviando dados para o InSnitch...";
+
+      // Send extracted data to local backend
+      try {
+        const backendRes = await fetch(`${BACKEND_URL}/api/extension/import`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(response.data)
+        });
+
+        if (!backendRes.ok) {
+          const errData = await backendRes.json();
+          throw new Error(errData.detail || "Falha ao gravar no dashboard.");
+        }
+
+        const importResult = await backendRes.json();
+        const counts = importResult.diff?.counts || {};
+
+        // Show Result
+        progressBox.classList.add("hidden");
+        resultCard.classList.remove("hidden");
+
+        document.getElementById("res-new").innerText = `+${counts.new_followers_count || 0}`;
+        document.getElementById("res-lost").innerText = `-${counts.lost_followers_count || 0}`;
+        document.getElementById("res-following").innerText = `+${counts.new_following_count || 0}`;
+        document.getElementById("res-not-following").innerText = (counts.not_following_back_count || 0).toLocaleString();
+
+      } catch (backendErr) {
+        progressBox.classList.add("hidden");
+        errorBox.classList.remove("hidden");
+        errorText.innerText = `Erro no Dashboard: ${backendErr.message}. Verifique se 'python run.py' está rodando.`;
+        btnSync.disabled = false;
+      }
+    };
+
+    try {
+      // Proactively ensure script is injected into active tab
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: currentTabId },
+          files: ['content.js']
+        });
+      } catch (e) {
+        // May already be injected or loaded
+      }
+
+      sendExtractMessage();
     } catch (err) {
       progressBox.classList.add("hidden");
       errorBox.classList.remove("hidden");
