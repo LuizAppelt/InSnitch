@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
+// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
 console.log("[InSnitch] Content script carregado com Suporte Alfabético A-Z.");
 
 // 1. Helpers for Cookies & CSRF Token
@@ -199,7 +199,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   for (let page = 0; page < 250; page++) {
     if (users.length >= maxLimit) break;
 
-    let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
+    let url = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
     if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
 
     let pageUsers = [];
@@ -307,7 +307,7 @@ async function fetchAlphabeticalUsers(userId, type = "followers", usersMap, targ
     for (let page = 0; page < 3; page++) {
       if (targetTotal > 0 && usersMap.size >= targetTotal) break;
 
-      let url = `/api/v1/friendships/${userId}/${type}/?query=${encodeURIComponent(char)}&count=50`;
+      let url = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?query=${encodeURIComponent(char)}&count=50`;
       if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
 
       let pageUsers = [];
