@@ -374,15 +374,25 @@ async function executeAutoScrapePass(session) {
     console.log(`[InSnitch] Passagem ${pass}/${maxPasses} concluída. Total acumulado: ${newFollowersCount}/${targetTotal} (+${newlyAdded} novos)`);
 
     // Smart completion criteria:
-    // 1. Target met exactly
+    // 1. If 0 followers were fetched on an account with followers, retry instead of sending empty payload
+    if (newFollowersCount === 0 && expected > 10) {
+      console.warn(`[InSnitch] Nenhum seguidor retornado na passagem ${pass}. Tentando novamente em 3s...`);
+      updateFloatingBanner(`Instagram demorou para responder. Aguardando 3s e tentando passagem ${pass}...`, null, false, true);
+      await new Promise(r => setTimeout(r, 3000));
+      isAutoScrapeRunning = false;
+      await executeAutoScrapePass(session);
+      return;
+    }
+
+    // 2. Target met exactly
     const targetMet = targetTotal > 0 && newFollowersCount >= targetTotal;
-    // 2. Small account (< 1200 followers) that reached end of list on pass 1
+    // 3. Small account (< 1200 followers) that reached end of list on pass 1
     const isSmallAccountDone = (expected > 0 && expected <= 1200 && newFollowersCount >= expected * 0.95);
-    // 3. Instagram end-of-list reached (passFollowers had fewer than 50 users on pass 1)
-    const endOfListReached = pass === 1 && passFollowers.length < 50;
-    // 4. Exhausted visible pool after 2 zero-progress passes
+    // 4. Instagram end-of-list reached (passFollowers had between 1 and 49 users on pass 1)
+    const endOfListReached = pass === 1 && passFollowers.length > 0 && passFollowers.length < 50;
+    // 5. Exhausted visible pool after 2 zero-progress passes
     const exhausted = (session.zeroProgressCount >= 2 && newFollowersCount >= 500);
-    // 5. Reached max reloads
+    // 6. Reached max reloads
     const maxPassesReached = pass >= maxPasses;
 
     const isComplete = targetMet || isSmallAccountDone || endOfListReached || exhausted || maxPassesReached;
