@@ -14,6 +14,7 @@ from src.database import (
     get_profile_by_username,
     get_all_profiles,
     delete_profile_by_username,
+    delete_snapshot_by_id,
     save_snapshot,
     get_snapshots_for_profile,
     get_latest_two_snapshots,
@@ -325,6 +326,26 @@ async def get_specific_snapshot_diff(username: str, snapshot_id: int):
         "current_snapshot": chronological[target_idx],
         "previous_snapshot": chronological[target_idx - 1] if target_idx > 0 else None,
         "diff": diff_result
+    }
+
+@app.delete("/api/profiles/{username}/snapshots/{snapshot_id}")
+async def delete_specific_snapshot(username: str, snapshot_id: int):
+    clean_username = sanitize_username(username)
+    profile = get_profile_by_username(clean_username)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Perfil não encontrado.")
+
+    snapshots = get_snapshots_for_profile(profile["id"])
+    if not any(s["id"] == snapshot_id for s in snapshots):
+        raise HTTPException(status_code=404, detail="Snapshot não pertence a este perfil.")
+
+    success = delete_snapshot_by_id(snapshot_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Erro ao excluir snapshot.")
+
+    return {
+        "success": True,
+        "message": f"Varredura #{snapshot_id} excluída com sucesso."
     }
 
 @app.get("/api/profiles/{username}/history")

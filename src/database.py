@@ -151,6 +151,23 @@ def delete_profile_by_username(username: str) -> bool:
     conn.close()
     return True
 
+def delete_snapshot_by_id(snapshot_id: int) -> bool:
+    """Deletes a specific snapshot and cascades to its users and AI reports."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM snapshots WHERE id = ?", (snapshot_id,))
+    if not cursor.fetchone():
+        conn.close()
+        return False
+
+    cursor.execute("PRAGMA foreign_keys = ON;")
+    cursor.execute("DELETE FROM snapshot_users WHERE snapshot_id = ?", (snapshot_id,))
+    cursor.execute("DELETE FROM ai_reports WHERE snapshot_id = ?", (snapshot_id,))
+    cursor.execute("DELETE FROM snapshots WHERE id = ?", (snapshot_id,))
+    conn.commit()
+    conn.close()
+    return True
+
 def save_snapshot(
     profile_id: int,
     followers_count: int,

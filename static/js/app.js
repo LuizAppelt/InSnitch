@@ -496,8 +496,14 @@ function setChangesViewMode(mode) {
   }
 }
 
+let currentSnapshotsList = [];
+let targetSnapshotIdToDelete = null;
+
 function renderSnapshotHistoryDropdown(snapshots) {
+  currentSnapshotsList = snapshots || [];
   const select = document.getElementById("select-snapshot-history");
+  const btnDel = document.getElementById("btn-delete-selected-snapshot");
+  if (btnDel) btnDel.classList.add("hidden");
   if (!select) return;
 
   if (!snapshots || snapshots.length <= 1) {
@@ -516,10 +522,16 @@ function renderSnapshotHistoryDropdown(snapshots) {
 }
 
 async function onSnapshotSelectChange(val) {
+  const btnDel = document.getElementById("btn-delete-selected-snapshot");
   if (val === 'all') {
+    if (btnDel) btnDel.classList.add("hidden");
+    targetSnapshotIdToDelete = null;
     setChangesViewMode('all_time');
     return;
   }
+
+  if (btnDel) btnDel.classList.remove("hidden");
+  targetSnapshotIdToDelete = parseInt(val);
 
   if (!currentProfile) return;
 
@@ -538,6 +550,114 @@ async function onSnapshotSelectChange(val) {
   } catch (e) {
     console.error("Erro ao carregar snapshot:", e);
   }
+}
+
+// Snapshot Deletion Handlers
+function confirmDeleteCurrentSelectedSnapshot() {
+  if (!targetSnapshotIdToDelete) return;
+  const snap = currentSnapshotsList.find(s => s.id === targetSnapshotIdToDelete);
+  const snapIndex = currentSnapshotsList.findIndex(s => s.id === targetSnapshotIdToDelete);
+  const num = snapIndex >= 0 ? currentSnapshotsList.length - snapIndex : targetSnapshotIdToDelete;
+  const label = snap ? `Varredura #${num} (${formatEventDate(snap.timestamp)})` : `Varredura #${targetSnapshotIdToDelete}`;
+  confirmDeleteSnapshot(targetSnapshotIdToDelete, label);
+}
+
+function confirmDeleteSnapshot(snapshotId, label) {
+  targetSnapshotIdToDelete = snapshotId;
+  const lblEl = document.getElementById("delete-snapshot-label");
+  if (lblEl) lblEl.innerText = label || `Varredura #${snapshotId}`;
+  const modal = document.getElementById("delete-snapshot-modal");
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeDeleteSnapshotModal() {
+  const modal = document.getElementById("delete-snapshot-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function executeDeleteSnapshot() {
+  if (!targetSnapshotIdToDelete || !currentProfile) return;
+  const snapId = targetSnapshotIdToDelete;
+  closeDeleteSnapshotModal();
+
+  try {
+    const res = await fetch(`/api/profiles/${currentProfile.username}/snapshots/${snapId}`, {
+      method: "DELETE"
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showToast(`Varredura #${snapId} excluída com sucesso!`, "success");
+      targetSnapshotIdToDelete = null;
+      await fetchProfileDiff(currentProfile.username);
+      if (!document.getElementById("manage-snapshots-modal")?.classList.contains("hidden")) {
+        renderManageSnapshotsTable();
+      }
+    } else {
+      showToast(data.detail || "Erro ao excluir varredura.", "error");
+    }
+  } catch (err) {
+    showToast(`Erro ao excluir: ${err.message}`, "error");
+  }
+}
+
+// Manage All Snapshots Modal
+function openManageSnapshotsModal() {
+  if (!currentProfile) return;
+  const usernameEl = document.getElementById("manage-snapshots-username");
+  if (usernameEl) usernameEl.innerText = `@${currentProfile.username}`;
+  renderManageSnapshotsTable();
+  const modal = document.getElementById("manage-snapshots-modal");
+  if (modal) modal.classList.remove("hidden");
+}
+
+function closeManageSnapshotsModal() {
+  const modal = document.getElementById("manage-snapshots-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function renderManageSnapshotsTable() {
+  const tbody = document.getElementById("manage-snapshots-table-body");
+  if (!tbody) return;
+
+  if (!currentSnapshotsList || currentSnapshotsList.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="5" class="py-6 text-center text-ig-grayText text-xs">
+          Nenhuma varredura encontrada.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = currentSnapshotsList.map((s, idx) => {
+    const num = currentSnapshotsList.length - idx;
+    const d = new Date(s.timestamp);
+    const dateStr = !isNaN(d.getTime()) ? `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}` : s.timestamp;
+    const label = `Varredura #${num} (${dateStr})`;
+
+    return `
+      <tr class="hover:bg-ig-lightHover/50 dark:hover:bg-ig-darkHover/50 transition">
+        <td class="py-2.5 font-semibold">
+          <span class="inline-flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full ${idx === 0 ? 'bg-emerald-500' : 'bg-ig-grayText'}"></span>
+            <span>#${num}</span>
+            ${idx === 0 ? '<span class="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded font-bold">Atual</span>' : ''}
+          </span>
+        </td>
+        <td class="py-2.5 text-ig-grayText">${dateStr}</td>
+        <td class="py-2.5 text-center font-medium">${(s.followers_count || 0).toLocaleString()}</td>
+        <td class="py-2.5 text-center font-medium">${(s.following_count || 0).toLocaleString()}</td>
+        <td class="py-2.5 text-right">
+          <button onclick="confirmDeleteSnapshot(${s.id}, '${label}')" class="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Excluir varredura">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  lucide.createIcons();
 }
 
 // Render Reciprocity Lists

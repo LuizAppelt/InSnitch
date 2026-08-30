@@ -304,11 +304,23 @@
               </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
               <span class="text-ig-grayText text-[11px] whitespace-nowrap">Ver no tempo:</span>
               <select id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none cursor-pointer">
                 <option value="all">Todas as Varreduras (Acumulado)</option>
               </select>
+
+              <!-- Botão excluir a varredura selecionada -->
+              <button id="btn-delete-selected-snapshot" onclick="confirmDeleteCurrentSelectedSnapshot()" title="Excluir esta varredura" class="hidden text-rose-500 hover:bg-rose-500/10 border border-rose-500/30 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1.5 text-[11px] font-semibold">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">Excluir Varredura</span>
+              </button>
+
+              <!-- Botão gerenciar todas as varreduras -->
+              <button onclick="openManageSnapshotsModal()" title="Gerenciar todas as varreduras" class="text-ig-grayText hover:text-ig-darkText dark:hover:text-white border border-ig-lightBorder dark:border-ig-darkBorder hover:bg-ig-lightHover dark:hover:bg-ig-darkHover px-2.5 py-1.5 rounded-xl transition flex items-center gap-1.5 text-[11px] font-semibold">
+                <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+                <span class="hidden sm:inline">Gerenciar Varreduras</span>
+              </button>
             </div>
           </div>
 
@@ -620,6 +632,69 @@
         </button>
         <button onclick="executeDeleteCurrentProfile()" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md">
           Sim, Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRM DELETE INDIVIDUAL SNAPSHOT -->
+  <div id="delete-snapshot-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder w-full max-w-sm rounded-3xl p-6 shadow-2xl relative text-center">
+      <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="trash-2" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold">Excluir Varredura?</h3>
+      <p class="text-xs text-ig-grayText mt-1 mb-6">
+        Tem certeza que deseja excluir a <span id="delete-snapshot-label" class="font-bold text-rose-500">Varredura selecionada</span>? O histórico e as métricas serão recalculados automaticamente.
+      </p>
+      <div class="flex items-center justify-center gap-3">
+        <button onclick="closeDeleteSnapshotModal()" class="px-4 py-2 rounded-xl text-xs font-semibold hover:bg-ig-lightHover dark:hover:bg-ig-darkHover">
+          Cancelar
+        </button>
+        <button onclick="executeDeleteSnapshot()" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md">
+          Sim, Excluir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGE ALL SNAPSHOTS (LIST TABLE) -->
+  <div id="manage-snapshots-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder w-full max-w-lg rounded-3xl p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between pb-4 mb-4 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+        <div class="flex items-center gap-2.5 font-bold text-base">
+          <i data-lucide="history" class="w-5 h-5 text-ig-primary"></i>
+          <span>Gerenciar Histórico de Varreduras</span>
+        </div>
+        <button onclick="closeManageSnapshotsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="text-xs text-ig-grayText mb-3">
+        Aqui estão todas as varreduras salvas para <strong id="manage-snapshots-username" class="text-ig-darkText dark:text-ig-whiteText">@usuario</strong>. Exclua apenas as varreduras que apresentarem dados corrompidos.
+      </div>
+
+      <div class="max-h-80 overflow-y-auto pr-1">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b border-ig-lightBorder dark:border-ig-darkBorder text-ig-grayText">
+              <th class="pb-2 font-semibold">Varredura</th>
+              <th class="pb-2 font-semibold">Data / Hora</th>
+              <th class="pb-2 font-semibold text-center">Seguidores</th>
+              <th class="pb-2 font-semibold text-center">Seguindo</th>
+              <th class="pb-2 font-semibold text-right">Ação</th>
+            </tr>
+          </thead>
+          <tbody id="manage-snapshots-table-body" class="divide-y divide-ig-lightBorder/50 dark:divide-ig-darkBorder/50">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 mt-5 pt-3 border-t border-ig-lightBorder dark:border-ig-darkBorder">
+        <button onclick="closeManageSnapshotsModal()" class="bg-ig-primary hover:bg-ig-primaryHover text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-md">
+          Concluir
         </button>
       </div>
     </div>
