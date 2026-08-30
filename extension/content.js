@@ -3,8 +3,12 @@ console.log("[InSnitch] Content script ativo na aba do Instagram.");
 
 // Helper to get cookie by name in browser context
 function getCookie(name) {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? match[2] : null;
+  const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
+  return match ? decodeURIComponent(match[3]) : '';
+}
+
+function getCsrfToken() {
+  return getCookie('csrftoken') || getCookie('csrf_token') || '';
 }
 
 // Extract current username from URL pathname
@@ -23,7 +27,7 @@ async function extractProfileInfo(username) {
     const headers = {
       'x-ig-app-id': '936619743392459',
       'x-asbd-id': '129477',
-      'x-csrftoken': getCookie('csrftoken') || '',
+      'x-csrftoken': getCsrfToken(),
       'x-requested-with': 'XMLHttpRequest',
       'Accept': '*/*'
     };
@@ -81,7 +85,7 @@ async function fetchUserList(userId, type = "followers", onProgress) {
   const seenUsernames = new Set();
   const seenMaxIds = new Set();
   let maxId = null;
-  const csrf = getCookie('csrftoken') || '';
+  const csrf = getCsrfToken();
 
   const headers = {
     'x-ig-app-id': '936619743392459',
@@ -93,10 +97,8 @@ async function fetchUserList(userId, type = "followers", onProgress) {
 
   // Up to 200 pages (~10,000 users)
   for (let page = 0; page < 200; page++) {
-    let url = type === "followers" 
-      ? `/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page`
-      : `/api/v1/friendships/${userId}/following/?count=50`;
-
+    // Standard Instagram Web endpoint
+    let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
     if (maxId) {
       url += `&max_id=${encodeURIComponent(maxId)}`;
     }
@@ -112,9 +114,19 @@ async function fetchUserList(userId, type = "followers", onProgress) {
 
       // Retry once on rate limit / 429
       if (res.status === 429) {
-        console.warn(`[InSnitch] Rate-limit detectado ao coletar ${type}, aguardando 1.5s...`);
-        await new Promise(r => setTimeout(r, 1500));
+        console.warn(`[InSnitch] Rate-limit detectado ao coletar ${type}, aguardando 2.5s...`);
+        await new Promise(r => setTimeout(r, 2500));
         res = await fetch(url, {
+          headers: { ...headers, 'User-Agent': navigator.userAgent },
+          credentials: 'include'
+        });
+      }
+
+      // If relative URL failed, try absolute URL
+      if (!res.ok && res.status !== 429) {
+        let altUrl = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
+        if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
+        res = await fetch(altUrl, {
           headers: { ...headers, 'User-Agent': navigator.userAgent },
           credentials: 'include'
         });
@@ -128,27 +140,8 @@ async function fetchUserList(userId, type = "followers", onProgress) {
         pageUsers = data.users || [];
         nextCursor = data.next_max_id;
       } else {
-        // Fallback: GraphQL query
-        console.warn(`[InSnitch] REST falhou com status ${res.status}, tentando GraphQL para ${type}...`);
-        const queryHash = type === "followers" ? "58712303d941c6855d4e888c5f0cd22f" : "37479f2b8209594dde7ffb0d41ac5177";
-        const variables = JSON.stringify({ id: userId, first: 50, after: maxId || "" });
-        const gqlUrl = `/graphql/query/?query_hash=${queryHash}&variables=${encodeURIComponent(variables)}`;
-        const gqlRes = await fetch(gqlUrl, { headers, credentials: 'include' });
-        if (gqlRes.ok) {
-          const gqlData = await gqlRes.json();
-          const edge = type === "followers" ? gqlData?.data?.user?.edge_followed_by : gqlData?.data?.user?.edge_follow;
-          const edges = edge?.edges || [];
-          pageUsers = edges.map(e => ({
-            username: e.node?.username,
-            full_name: e.node?.full_name || "",
-            profile_pic_url: e.node?.profile_pic_url || "",
-            is_verified: e.node?.is_verified || false
-          }));
-          nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
-        } else {
-          console.error(`[InSnitch] Falha em REST e GraphQL para ${type}`);
-          break;
-        }
+        console.warn(`[InSnitch] Status ${res.status} ao coletar ${type} para user ${userId}`);
+        break;
       }
 
       for (const u of pageUsers) {
@@ -164,13 +157,11 @@ async function fetchUserList(userId, type = "followers", onProgress) {
         });
       }
 
-      maxId = nextCursor;
-
       if (onProgress) {
         onProgress(type, users.length);
       }
 
-      maxId = data.next_max_id;
+      maxId = nextCursor;
       if (!maxId || seenMaxIds.has(maxId) || pageUsers.length === 0) {
         break;
       }
@@ -243,11 +234,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguindo: ${count}...` });
         });
 
-        // Safeguard: Check for empty lists on non-empty profiles
+        // Safeguard: Check for private accounts / empty lists on non-empty profiles
+        if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {
+          sendResponse({ 
+            success: false, 
+            error: `Este perfil é privado (@${profileInfo.username}) e o Instagram restringe a lista de seguidores para contas que não o seguem.` 
+          });
+          return;
+        }
+
         if (profileInfo.followers_count > 10 && followers.length === 0) {
           sendResponse({ 
             success: false, 
-            error: `O Instagram não retornou a lista de seguidores (0 de ${profileInfo.followers_count}). Aguarde alguns segundos e tente novamente.` 
+            error: `O Instagram não retornou a lista de seguidores (0 de ${profileInfo.followers_count}). Recarregue a aba do Instagram e tente novamente.` 
           });
           return;
         }
@@ -255,7 +254,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (profileInfo.following_count > 10 && following.length === 0) {
           sendResponse({ 
             success: false, 
-            error: `O Instagram não retornou a lista de seguidos (0 de ${profileInfo.following_count}). Aguarde alguns segundos e tente novamente.` 
+            error: `O Instagram não retornou a lista de seguidos (0 de ${profileInfo.following_count}). Recarregue a aba do Instagram e tente novamente.` 
           });
           return;
         }
