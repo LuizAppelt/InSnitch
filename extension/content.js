@@ -1,5 +1,5 @@
-﻿// InSnitch Content Script - Smart Multi-Pass Collector & Auto-Reload Engine
-console.log("[InSnitch] Content script carregado.");
+﻿// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
+console.log("[InSnitch] Content script carregado com Suporte Alfabético A-Z.");
 
 // 1. Helpers for Cookies & CSRF Token
 function getCookie(name) {
@@ -177,7 +177,7 @@ async function extractProfileInfo(username) {
   return profile;
 }
 
-// 3. Fetch user list with pagination
+// 3. Fase 1: Fetch user list via standard cursor pagination
 async function fetchUserList(userId, type = "followers", expectedTotal = 0, onProgress, options = {}) {
   const delayMs = options.delay || 650;
   const maxLimit = options.maxLimit || 10000;
@@ -197,15 +197,10 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   };
 
   for (let page = 0; page < 250; page++) {
-    if (users.length >= maxLimit) {
-      console.log(`[InSnitch] Limite máximo atingido (${maxLimit}) para ${type}`);
-      break;
-    }
+    if (users.length >= maxLimit) break;
 
     let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
-    if (maxId) {
-      url += `&max_id=${encodeURIComponent(maxId)}`;
-    }
+    if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
 
     let pageUsers = [];
     let nextCursor = null;
@@ -221,7 +216,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
         if (res.status === 429) {
           const waitTime = attempt * 2500;
           if (onProgress) {
-            onProgress(type, users.length, expectedTotal, `Pausa de segurança anti-bloqueio (${waitTime/1000}s)...`);
+            onProgress(type, users.length, expectedTotal, `Pausa anti-bloqueio (${waitTime/1000}s)...`);
           }
           await new Promise(r => setTimeout(r, waitTime));
           continue;
@@ -250,9 +245,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
       }
     }
 
-    if (!success || pageUsers.length === 0) {
-      break;
-    }
+    if (!success || pageUsers.length === 0) break;
 
     for (const u of pageUsers) {
       const cleanName = (u.username || "").toLowerCase().trim();
@@ -272,9 +265,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
     }
 
     maxId = nextCursor;
-    if (!maxId || seenMaxIds.has(maxId)) {
-      break;
-    }
+    if (!maxId || seenMaxIds.has(maxId)) break;
     seenMaxIds.add(maxId);
 
     await new Promise(r => setTimeout(r, delayMs));
@@ -283,7 +274,105 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   return users;
 }
 
-// 4. Floating On-Screen Progress Banner
+// 4. Fase 2: Varredura Alfabética A-Z (Alphabetical Partitioning)
+// Puxa seguidores por prefixos de busca para ultrapassar o limite de ~1.650 do cursor
+async function fetchAlphabeticalUsers(userId, type = "followers", usersMap, targetTotal = 0, onProgress, options = {}) {
+  const delayMs = Math.max(350, (options.delay || 650) - 200);
+  const chars = [
+    'a','b','c','d','e','f','g','h','i','j','k','l','m',
+    'n','o','p','q','r','s','t','u','v','w','x','y','z',
+    '0','1','2','3','4','5','6','7','8','9','_','.'
+  ];
+
+  const csrf = getCsrfToken();
+  const headers = {
+    'x-ig-app-id': '936619743392459',
+    'x-asbd-id': '129477',
+    'x-csrftoken': csrf,
+    'x-requested-with': 'XMLHttpRequest',
+    'Accept': '*/*'
+  };
+
+  console.log(`[InSnitch] Iniciando Fase 2: Varredura Alfabética A-Z para capturar seguidores restantes (${usersMap.size}/${targetTotal})...`);
+
+  for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    if (targetTotal > 0 && usersMap.size >= targetTotal) {
+      console.log(`[InSnitch] Meta total de 100% atingida na letra "${char}" (${usersMap.size}/${targetTotal})!`);
+      break;
+    }
+
+    let maxId = null;
+    // Query up to 3 pages per letter (~150 users per letter)
+    for (let page = 0; page < 3; page++) {
+      if (targetTotal > 0 && usersMap.size >= targetTotal) break;
+
+      let url = `/api/v1/friendships/${userId}/${type}/?query=${encodeURIComponent(char)}&count=50`;
+      if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
+
+      let pageUsers = [];
+      let nextCursor = null;
+
+      try {
+        let res = await fetch(url, {
+          headers: { ...headers, 'User-Agent': navigator.userAgent },
+          credentials: 'include'
+        });
+
+        if (res.status === 429) {
+          console.warn(`[InSnitch] Rate-limit (429) na busca da letra "${char}". Aguardando 3s...`);
+          if (onProgress) {
+            onProgress(type, usersMap.size, targetTotal, `Pausa anti-bloqueio na letra "${char.toUpperCase()}" (3s)...`);
+          }
+          await new Promise(r => setTimeout(r, 3000));
+          continue;
+        }
+
+        if (res.ok) {
+          const data = await res.json();
+          pageUsers = data.users || [];
+          nextCursor = data.next_max_id;
+        }
+      } catch (err) {
+        console.warn(`[InSnitch] Erro na busca por "${char}":`, err);
+      }
+
+      if (pageUsers.length === 0) break;
+
+      let addedInPage = 0;
+      for (const u of pageUsers) {
+        const clean = (u.username || "").toLowerCase().trim();
+        if (clean && !usersMap.has(clean)) {
+          usersMap.set(clean, {
+            username: u.username,
+            full_name: u.full_name || "",
+            profile_pic_url: u.profile_pic_url || "",
+            is_verified: u.is_verified || false
+          });
+          addedInPage++;
+        }
+      }
+
+      if (onProgress) {
+        onProgress(
+          type, 
+          usersMap.size, 
+          targetTotal, 
+          `Fase 2: Pescando letra "${char.toUpperCase()}" (${usersMap.size}/${targetTotal} catalogados)...`
+        );
+      }
+
+      maxId = nextCursor;
+      if (!maxId || addedInPage === 0) break;
+
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+}
+
+// 5. Floating On-Screen Progress Banner
 function updateFloatingBanner(message, percent = null, isDone = false, isError = false) {
   let banner = document.getElementById("insnitch-floating-banner");
   if (!banner) {
@@ -336,9 +425,9 @@ function updateFloatingBanner(message, percent = null, isDone = false, isError =
     <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
       <div style="display: flex; align-items: center; gap: 8px;">
         <span style="display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: ${iconColor}; color: white; font-weight: bold; font-size: 12px;">${icon}</span>
-        <span style="font-weight: 700; font-size: 13px; color: #f5f5f5;">InSnitch Auto-Sync</span>
+        <span style="font-weight: 700; font-size: 13px; color: #f5f5f5;">InSnitch Radar</span>
       </div>
-      ${!isDone ? `<button id="btn-cancel-insnitch" style="background: none; border: none; color: #888; cursor: pointer; font-size: 12px;">Cancelar ✕</button>` : ''}
+      ${!isDone ? `<button id="btn-cancel-insnitch" style="background: none; border: none; color: #888; cursor: pointer; font-size: 12px;">✕</button>` : ''}
     </div>
     <div style="font-size: 12px; color: ${isError ? '#ed4956' : '#cccccc'}; line-height: 1.4;">
       ${message}
@@ -349,8 +438,6 @@ function updateFloatingBanner(message, percent = null, isDone = false, isError =
   const btnCancel = banner.querySelector("#btn-cancel-insnitch");
   if (btnCancel) {
     btnCancel.addEventListener("click", () => {
-      isAutoScrapeRunning = false;
-      chrome.storage.local.remove(["insnitch_auto_session"]);
       banner.remove();
     });
   }
@@ -362,185 +449,7 @@ function updateFloatingBanner(message, percent = null, isDone = false, isError =
   }
 }
 
-// 5. Multi-Pass Scrape Session Engine
-let isAutoScrapeRunning = false;
-
-async function executeAutoScrapePass(session) {
-  if (isAutoScrapeRunning) {
-    console.log("[InSnitch] Coleta já em andamento.");
-    return;
-  }
-  isAutoScrapeRunning = true;
-
-  try {
-    if (!session.targetId) {
-      const pInfo = await extractProfileInfo(session.username);
-      if (pInfo.id) session.targetId = pInfo.id;
-    }
-
-    if (!session.targetId) {
-      updateFloatingBanner("Não foi possível resolver o ID do perfil.", null, false, true);
-      await chrome.storage.local.remove(["insnitch_auto_session"]);
-      isAutoScrapeRunning = false;
-      return;
-    }
-
-    const currentFollowers = session.followersMap || {};
-    const currentFollowing = session.followingMap || {};
-    const prevFollowersCount = Object.keys(currentFollowers).length;
-    const expected = session.expectedFollowers || 0;
-    const maxLimit = session.options?.maxLimit || 10000;
-    const targetTotal = expected > 0 ? Math.min(expected, maxLimit) : maxLimit;
-    const pass = session.pass || 1;
-    const maxPasses = session.maxPasses || 6;
-
-    const currentPerc = targetTotal > 0 ? Math.round((prevFollowersCount / targetTotal) * 100) : 0;
-    updateFloatingBanner(
-      `Passagem ${pass}/${maxPasses}: Coletando seguidores (${prevFollowersCount}/${targetTotal || '...'} catalogados)...`,
-      currentPerc
-    );
-
-    // 1. Fetch Followers
-    const passFollowers = await fetchUserList(session.targetId, "followers", expected, (type, count, total, extra) => {
-      const liveCount = Math.max(prevFollowersCount, count);
-      const perc = targetTotal > 0 ? Math.round((liveCount / targetTotal) * 100) : 0;
-      updateFloatingBanner(
-        extra || `Passagem ${pass}/${maxPasses}: Coletando seguidores (${liveCount}/${targetTotal || '...'})...`,
-        perc
-      );
-    }, session.options);
-
-    // Merge into persistent map
-    for (const u of passFollowers) {
-      const clean = (u.username || "").toLowerCase().trim();
-      if (clean && !currentFollowers[clean]) {
-        currentFollowers[clean] = u;
-      }
-    }
-
-    // 2. Fetch Following (only on pass 1 or if empty)
-    if (Object.keys(currentFollowing).length === 0 || pass === 1) {
-      updateFloatingBanner(`Passagem ${pass}/${maxPasses}: Coletando lista de seguidos...`, currentPerc);
-      const passFollowing = await fetchUserList(session.targetId, "following", session.expectedFollowing, (type, count) => {
-        updateFloatingBanner(`Passagem ${pass}/${maxPasses}: Coletando seguindo (${count})...`, currentPerc);
-      }, session.options);
-
-      for (const u of passFollowing) {
-        const clean = (u.username || "").toLowerCase().trim();
-        if (clean && !currentFollowing[clean]) {
-          currentFollowing[clean] = u;
-        }
-      }
-    }
-
-    session.followersMap = currentFollowers;
-    session.followingMap = currentFollowing;
-
-    const newFollowersCount = Object.keys(currentFollowers).length;
-    const newlyAdded = newFollowersCount - prevFollowersCount;
-
-    if (newlyAdded === 0) {
-      session.zeroProgressCount = (session.zeroProgressCount || 0) + 1;
-    } else {
-      session.zeroProgressCount = 0;
-    }
-
-    console.log(`[InSnitch] Passagem ${pass}/${maxPasses} concluída: ${newFollowersCount}/${targetTotal} (+${newlyAdded} novos)`);
-
-    // Smart completion criteria
-    const targetMet = targetTotal > 0 && newFollowersCount >= targetTotal;
-    const isSmallAccount = (expected > 0 && expected <= 1200);
-    const endOfListReached = pass === 1 && passFollowers.length > 0 && passFollowers.length < 50;
-    const exhausted = (session.zeroProgressCount >= 2 && newFollowersCount >= 500);
-    const maxPassesReached = pass >= maxPasses;
-
-    const isComplete = targetMet || isSmallAccount || endOfListReached || exhausted || maxPassesReached;
-
-    if (isComplete) {
-      updateFloatingBanner("Enviando pacote consolidado para o InSnitch Dashboard...", 100);
-
-      const followersList = Object.values(currentFollowers);
-      const followingList = Object.values(currentFollowing);
-
-      const packageData = {
-        profile: {
-          username: session.profileInfo.username,
-          full_name: session.profileInfo.full_name,
-          biography: session.profileInfo.biography,
-          profile_pic_url: session.profileInfo.profile_pic_url,
-          is_verified: session.profileInfo.is_verified,
-          is_private: session.profileInfo.is_private,
-          posts_count: session.profileInfo.posts_count,
-          followers_count: session.profileInfo.followers_count || followersList.length,
-          following_count: session.profileInfo.following_count || followingList.length
-        },
-        followers: followersList,
-        following: followingList,
-        followers_count: session.profileInfo.followers_count || followersList.length,
-        following_count: session.profileInfo.following_count || followingList.length,
-        posts_count: session.profileInfo.posts_count
-      };
-
-      try {
-        const backendRes = await fetch(`http://127.0.0.1:8000/api/extension/import`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(packageData)
-        });
-
-        if (!backendRes.ok) {
-          const errData = await backendRes.json();
-          throw new Error(errData.detail || "Falha ao gravar no dashboard.");
-        }
-
-        await chrome.storage.local.remove(["insnitch_auto_session"]);
-        isAutoScrapeRunning = false;
-
-        updateFloatingBanner(
-          `✓ Sincronização 100% Concluída! ${followersList.length} seguidores consolidados e salvos no InSnitch!`,
-          100,
-          true
-        );
-      } catch (postErr) {
-        updateFloatingBanner(`Erro ao salvar: ${postErr.message}`, null, false, true);
-        isAutoScrapeRunning = false;
-      }
-    } else {
-      // Setup next pass and reload tab smoothly
-      session.pass = pass + 1;
-      const remaining = targetTotal - newFollowersCount;
-
-      updateFloatingBanner(
-        `Passagem ${pass} concluída (${newFollowersCount}/${targetTotal}). Recarregando página para buscar ${remaining} restantes...`,
-        Math.round((newFollowersCount / targetTotal) * 100)
-      );
-
-      await chrome.storage.local.set({ insnitch_auto_session: session });
-      isAutoScrapeRunning = false;
-
-      await new Promise(r => setTimeout(r, 2000));
-      window.location.reload();
-    }
-
-  } catch (err) {
-    console.error("[InSnitch] Erro na sessão multi-pass:", err);
-    updateFloatingBanner(`Erro: ${err.message}`, null, false, true);
-    isAutoScrapeRunning = false;
-    await chrome.storage.local.remove(["insnitch_auto_session"]);
-  }
-}
-
-// Check on page load if an auto-session is active
-chrome.storage.local.get(["insnitch_auto_session"], (data) => {
-  if (data && data.insnitch_auto_session) {
-    console.log("[InSnitch] Retomando sessão de multi-pass...");
-    setTimeout(() => {
-      executeAutoScrapePass(data.insnitch_auto_session);
-    }, 2000);
-  }
-});
-
-// 6. Message Listener
+// 6. Message Listener from Popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "GET_CURRENT_PROFILE") {
     const username = getCurrentPageUsername();
@@ -557,10 +466,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
+        updateFloatingBanner("Iniciando coleta completa de seguidores...", 0);
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Obtendo dados do perfil..." });
         const profileInfo = await extractProfileInfo(username);
 
         if (!profileInfo.id) {
+          updateFloatingBanner(`Não foi possível obter o ID de @${username}. Recarregue a página (F5).`, null, false, true);
           sendResponse({ 
             success: false, 
             error: `Não foi possível obter o ID de @${username}. Recarregue a aba do Instagram (F5) e tente novamente.` 
@@ -571,77 +482,129 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const scanOptions = request.options || {};
         const expectedFollowers = profileInfo.followers_count || 0;
         const expectedFollowing = profileInfo.following_count || 0;
+        const followersMap = new Map();
 
-        // CASE A: Small / Medium Account (<= 1200 followers) -> Direct In-Page Sync (Fast & No reload)
-        if (expectedFollowers <= 1200) {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Iniciando coleta de seguidores..." });
-          const followers = await fetchUserList(profileInfo.id, "followers", expectedFollowers, (type, count, total, extraMsg) => {
-            const perc = total > 0 ? ` (${Math.min(100, Math.round((count / total) * 100))}%)` : '';
-            const msg = extraMsg || `Coletando seguidores: ${count}${total ? ` de ${total}` : ''}${perc}...`;
+        // -------------------------------------------------------------
+        // FASE 1: Coleta Principal por Cursor de Seguidores
+        // -------------------------------------------------------------
+        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Fase 1: Coletando lista principal de seguidores..." });
+        updateFloatingBanner("Fase 1: Coletando lista principal de seguidores...", 10);
+
+        const phase1Followers = await fetchUserList(
+          profileInfo.id, 
+          "followers", 
+          expectedFollowers, 
+          (type, count, total, extraMsg) => {
+            const perc = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : null;
+            const msg = extraMsg || `Fase 1: Coletando seguidores: ${count}${total ? ` de ${total}` : ''}${perc ? ` (${perc}%)` : ''}...`;
             chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
-          }, scanOptions);
+            updateFloatingBanner(msg, perc);
+          }, 
+          scanOptions
+        );
 
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Iniciando coleta de seguidos..." });
-          const following = await fetchUserList(profileInfo.id, "following", expectedFollowing, (type, count, total, extraMsg) => {
-            const perc = total > 0 ? ` (${Math.min(100, Math.round((count / total) * 100))}%)` : '';
-            const msg = extraMsg || `Coletando seguindo: ${count}${total ? ` de ${total}` : ''}${perc}...`;
-            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
-          }, scanOptions);
+        for (const u of phase1Followers) {
+          const clean = (u.username || "").toLowerCase().trim();
+          if (clean) followersMap.set(clean, u);
+        }
 
-          if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {
-            sendResponse({ 
-              success: false, 
-              error: `Este perfil é privado (@${profileInfo.username}) e o Instagram restringe a lista de seguidores para quem não o segue.` 
-            });
-            return;
-          }
+        console.log(`[InSnitch] Fase 1 finalizada: ${followersMap.size}/${expectedFollowers} seguidores catalogados.`);
 
-          const packageData = {
-            profile: {
-              username: profileInfo.username,
-              full_name: profileInfo.full_name,
-              biography: profileInfo.biography,
-              profile_pic_url: profileInfo.profile_pic_url,
-              is_verified: profileInfo.is_verified,
-              is_private: profileInfo.is_private,
-              posts_count: profileInfo.posts_count,
-              followers_count: profileInfo.followers_count || followers.length,
-              following_count: profileInfo.following_count || following.length
+        // -------------------------------------------------------------
+        // FASE 2: Varredura Alfabética A-Z (se ainda faltar seguidores)
+        // -------------------------------------------------------------
+        if (expectedFollowers > 1000 && followersMap.size < expectedFollowers) {
+          const remaining = expectedFollowers - followersMap.size;
+          console.log(`[InSnitch] Ativando Fase 2 (A-Z) para pescar ${remaining} seguidores restantes...`);
+          
+          chrome.runtime.sendMessage({ 
+            action: "UPDATE_STATUS", 
+            message: `Fase 2: Pescando ${remaining} seguidores restantes por ordem alfabética (A-Z)...` 
+          });
+          updateFloatingBanner(`Fase 2: Pescando ${remaining} seguidores restantes por ordem alfabética (A-Z)...`, Math.round((followersMap.size / expectedFollowers) * 100));
+
+          await fetchAlphabeticalUsers(
+            profileInfo.id,
+            "followers",
+            followersMap,
+            expectedFollowers,
+            (type, count, total, msg) => {
+              const perc = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : null;
+              chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
+              updateFloatingBanner(msg, perc);
             },
-            followers: followers,
-            following: following,
-            followers_count: profileInfo.followers_count || followers.length,
-            following_count: profileInfo.following_count || following.length,
-            posts_count: profileInfo.posts_count
-          };
+            scanOptions
+          );
+        }
 
-          sendResponse({ success: true, data: packageData });
+        // -------------------------------------------------------------
+        // FASE 3: Coleta de Seguidos (Following)
+        // -------------------------------------------------------------
+        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
+        updateFloatingBanner("Coletando lista de quem o perfil segue...", 90);
+
+        const followingList = await fetchUserList(
+          profileInfo.id, 
+          "following", 
+          expectedFollowing, 
+          (type, count, total, extraMsg) => {
+            const perc = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : null;
+            const msg = extraMsg || `Coletando seguindo: ${count}${total ? ` de ${total}` : ''}${perc ? ` (${perc}%)` : ''}...`;
+            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
+            updateFloatingBanner(msg, perc);
+          }, 
+          scanOptions
+        );
+
+        const followersList = Array.from(followersMap.values());
+
+        // Safeguards
+        if (profileInfo.is_private && followersList.length === 0 && profileInfo.followers_count > 0) {
+          updateFloatingBanner(`Perfil privado restrito pelo Instagram.`, null, false, true);
+          sendResponse({ 
+            success: false, 
+            error: `Este perfil é privado (@${profileInfo.username}) e o Instagram restringe a lista de seguidores para quem não o segue.` 
+          });
           return;
         }
 
-        // CASE B: Large Account (> 1200 followers) -> Start Multi-Pass Auto-Reload Session
-        const session = {
-          username,
-          targetId: profileInfo.id,
-          profileInfo,
-          expectedFollowers,
-          expectedFollowing,
-          options: scanOptions,
-          followersMap: {},
-          followingMap: {},
-          pass: 1,
-          maxPasses: 6,
-          zeroProgressCount: 0
+        if (profileInfo.followers_count > 10 && followersList.length === 0) {
+          updateFloatingBanner(`Instagram não retornou seguidores.`, null, false, true);
+          sendResponse({ 
+            success: false, 
+            error: `O Instagram não retornou a lista de seguidores. Aguarde alguns segundos e tente novamente.` 
+          });
+          return;
+        }
+
+        const packageData = {
+          profile: {
+            username: profileInfo.username,
+            full_name: profileInfo.full_name,
+            biography: profileInfo.biography,
+            profile_pic_url: profileInfo.profile_pic_url,
+            is_verified: profileInfo.is_verified,
+            is_private: profileInfo.is_private,
+            posts_count: profileInfo.posts_count,
+            followers_count: profileInfo.followers_count || followersList.length,
+            following_count: profileInfo.following_count || followingList.length
+          },
+          followers: followersList,
+          following: followingList,
+          followers_count: profileInfo.followers_count || followersList.length,
+          following_count: profileInfo.following_count || followingList.length,
+          posts_count: profileInfo.posts_count
         };
 
-        sendResponse({ success: true, isAsyncAuto: true });
-        executeAutoScrapePass(session);
+        updateFloatingBanner(`✓ Coleta Concluída! ${followersList.length} seguidores salvos!`, 100, true);
+        sendResponse({ success: true, data: packageData });
 
       } catch (err) {
         console.error("[InSnitch] Erro na extração:", err);
+        updateFloatingBanner(`Erro: ${err.message}`, null, false, true);
         sendResponse({ success: false, error: err.message });
       }
     })();
-    return true;
+    return true; // Keep message channel open for async response
   }
 });
