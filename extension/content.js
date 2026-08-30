@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - Direct In-Page Collector
+// InSnitch Content Script - Direct In-Page Collector
 console.log("[InSnitch] Content script carregado na aba do Instagram.");
 
 // Helper to get cookie by name
@@ -8,7 +8,14 @@ function getCookie(name) {
 }
 
 function getCsrfToken() {
-  return getCookie('csrftoken') || getCookie('csrf_token') || '';
+  let token = getCookie('csrftoken') || getCookie('csrf_token');
+  if (!token) {
+    try {
+      const match = document.documentElement.innerHTML.match(/"csrf_token":"([^"]+)"/);
+      if (match) token = match[1];
+    } catch (e) {}
+  }
+  return token || '';
 }
 
 // Extract username from URL pathname
@@ -98,11 +105,19 @@ async function extractProfileInfo(username) {
     if (!profile.profile_pic_url && avatarEl) profile.profile_pic_url = avatarEl.src;
     if (!profile.is_verified) profile.is_verified = !!document.querySelector('header [title="Verificado"]');
 
-    // 3. Fallback for numeric ID from page HTML
+    // 3. Fallback: Logged-in user cookie check (ds_user_id)
+    const isOwnProfile = !!document.querySelector('a[href*="/accounts/edit/"], header button');
+    const dsUserId = getCookie('ds_user_id');
+    if (!profile.id && isOwnProfile && dsUserId) {
+      profile.id = dsUserId;
+    }
+
+    // 4. Fallback for numeric ID from page HTML scripts
     if (!profile.id) {
       const html = document.documentElement.innerHTML;
       const idMatch = html.match(/"owner_user_id":"([0-9]+)"/) || 
                       html.match(new RegExp(`"id":"([0-9]+)","username":"${username}"`, "i")) ||
+                      html.match(new RegExp(`"username":"${username}"[^{}]*"id":"([0-9]+)"`, "i")) ||
                       html.match(/"user_id":"([0-9]+)"/) ||
                       html.match(/"pk":"([0-9]+)"/) ||
                       html.match(/"pk_id":"([0-9]+)"/);
@@ -112,7 +127,28 @@ async function extractProfileInfo(username) {
     console.warn("[InSnitch] Erro ao extrair do DOM:", domErr);
   }
 
-  // 4. Search endpoint fallback for ID
+  // 5. Fallback via feed endpoint
+  if (!profile.id) {
+    try {
+      const feedRes = await fetch(`/api/v1/feed/user/${username}/username/`, {
+        credentials: 'include',
+        headers: { 'x-ig-app-id': '936619743392459', 'x-csrftoken': getCsrfToken() }
+      });
+      if (feedRes.ok) {
+        const feedData = await feedRes.json();
+        const u = feedData?.user;
+        if (u?.pk || u?.id) {
+          profile.id = u.pk || u.id;
+          if (!profile.profile_pic_url) profile.profile_pic_url = u.profile_pic_url;
+          if (!profile.full_name) profile.full_name = u.full_name;
+        }
+      }
+    } catch (fErr) {
+      console.warn("[InSnitch] Erro no feed endpoint:", fErr);
+    }
+  }
+
+  // 6. Search endpoint fallback for ID
   if (!profile.id) {
     try {
       const searchRes = await fetch(`/api/v1/users/search/?q=${encodeURIComponent(username)}`, {
@@ -131,6 +167,11 @@ async function extractProfileInfo(username) {
     } catch (sErr) {
       console.warn("[InSnitch] Erro na busca de ID:", sErr);
     }
+  }
+
+  // 7. Last resort: If logged in and ds_user_id exists, use it
+  if (!profile.id && getCookie('ds_user_id')) {
+    profile.id = getCookie('ds_user_id');
   }
 
   return profile;
