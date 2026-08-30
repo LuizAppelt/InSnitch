@@ -166,6 +166,9 @@ function setupEventListeners() {
   });
 
   btnOpenDashboard.addEventListener("click", () => {
-    chrome.tabs.create({ url: BACKEND_URL });
+    const targetUrl = currentDetectedUsername 
+      ? `${BACKEND_URL}/?profile=${encodeURIComponent(currentDetectedUsername)}` 
+      : BACKEND_URL;
+    chrome.tabs.create({ url: targetUrl });
   });
 }

@@ -126,13 +126,17 @@ async function loadProfilesList(selectUsername = null) {
     if (dashView) dashView.classList.remove("hidden");
     if (btnDelete) btnDelete.classList.remove("hidden");
 
-    let targetUsername = selectUsername;
-    if (!targetUsername && currentProfile) {
-      targetUsername = currentProfile.username;
-    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const profileParam = urlParams.get('profile');
+    const savedProfile = localStorage.getItem("insnitch_last_active_profile");
+
+    let targetUsername = selectUsername || profileParam || (currentProfile && currentProfile.username) || savedProfile;
+    
     if (!targetUsername || !allProfilesList.some(p => p.username === targetUsername)) {
       targetUsername = allProfilesList[0].username;
     }
+
+    localStorage.setItem("insnitch_last_active_profile", targetUsername);
 
     if (select) {
       select.innerHTML = allProfilesList.map(p => {
@@ -149,6 +153,7 @@ async function loadProfilesList(selectUsername = null) {
 
 async function switchActiveProfile(username) {
   if (!username) return;
+  localStorage.setItem("insnitch_last_active_profile", username);
   await fetchProfileDiff(username);
 }
 
@@ -546,9 +551,17 @@ async function onSnapshotSelectChange(val) {
       if (btnLatest) btnLatest.className = "px-3 py-1 rounded-lg text-[11px] font-semibold transition bg-ig-primary text-white shadow-sm";
 
       renderDiffs(data.diff);
+    } else {
+      showToast("Varredura não encontrada.", "error");
+      const select = document.getElementById("select-snapshot-history");
+      if (select) select.value = "all";
+      setChangesViewMode('all_time');
     }
   } catch (e) {
     console.error("Erro ao carregar snapshot:", e);
+    const select = document.getElementById("select-snapshot-history");
+    if (select) select.value = "all";
+    setChangesViewMode('all_time');
   }
 }
 
@@ -565,7 +578,7 @@ function confirmDeleteCurrentSelectedSnapshot() {
 function confirmDeleteSnapshot(snapshotId, label) {
   targetSnapshotIdToDelete = snapshotId;
   const lblEl = document.getElementById("delete-snapshot-label");
-  if (lblEl) lblEl.innerText = label || `Varredura #${snapshotId}`;
+  if (lblEl) lblEl.innerText = label || `Varredura selecionada`;
   const modal = document.getElementById("delete-snapshot-modal");
   if (modal) modal.classList.remove("hidden");
 }
@@ -578,17 +591,24 @@ function closeDeleteSnapshotModal() {
 async function executeDeleteSnapshot() {
   if (!targetSnapshotIdToDelete || !currentProfile) return;
   const snapId = targetSnapshotIdToDelete;
+  const username = currentProfile.username;
   closeDeleteSnapshotModal();
 
   try {
-    const res = await fetch(`/api/profiles/${currentProfile.username}/snapshots/${snapId}`, {
+    const res = await fetch(`/api/profiles/${username}/snapshots/${snapId}`, {
       method: "DELETE"
     });
     const data = await res.json();
     if (res.ok) {
-      showToast(`Varredura #${snapId} excluída com sucesso!`, "success");
+      showToast("Varredura excluída com sucesso!", "success");
       targetSnapshotIdToDelete = null;
-      await fetchProfileDiff(currentProfile.username);
+      changesViewMode = 'all_time';
+      const selectSnap = document.getElementById("select-snapshot-history");
+      if (selectSnap) selectSnap.value = "all";
+      
+      // Reload profile lists, update counters and refresh dashboard state
+      await loadProfilesList(username);
+
       if (!document.getElementById("manage-snapshots-modal")?.classList.contains("hidden")) {
         renderManageSnapshotsTable();
       }

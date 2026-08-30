@@ -283,7 +283,56 @@ async def get_profile_diff(username: str):
 
     latest_snap, prev_snap = get_latest_two_snapshots(profile["id"])
     if not latest_snap:
-        raise HTTPException(status_code=404, detail="Nenhum snapshot encontrado para este perfil.")
+        return {
+            "profile": profile,
+            "latest_snapshot": None,
+            "previous_snapshot": None,
+            "diff": {
+                "is_baseline": True,
+                "counts": {
+                    "total_followers": 0,
+                    "total_following": 0,
+                    "new_followers_count": 0,
+                    "lost_followers_count": 0,
+                    "new_following_count": 0,
+                    "lost_following_count": 0,
+                    "not_following_back_count": 0,
+                    "fans_count": 0,
+                    "mutual_count": 0,
+                    "verified_followers_count": 0,
+                    "ghost_followers_count": 0
+                },
+                "diffs": {
+                    "new_followers": [],
+                    "lost_followers": [],
+                    "new_following": [],
+                    "lost_following": []
+                },
+                "reciprocity": {
+                    "not_following_back": [],
+                    "fans": [],
+                    "mutual": [],
+                    "verified": [],
+                    "ghosts": []
+                }
+            },
+            "history_events": {
+                "snapshots": [],
+                "all_time_events": {
+                    "new_followers": [],
+                    "lost_followers": [],
+                    "new_following": [],
+                    "lost_following": []
+                },
+                "all_time_counts": {
+                    "total_new_followers": 0,
+                    "total_lost_followers": 0,
+                    "total_new_following": 0,
+                    "total_lost_following": 0
+                }
+            },
+            "ai_report": ""
+        }
 
     prev_id = prev_snap["id"] if prev_snap else None
     diff_result = calculate_diff(latest_snap["id"], prev_id)
