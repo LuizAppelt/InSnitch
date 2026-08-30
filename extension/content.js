@@ -191,7 +191,57 @@ async function fetchUserList(userId, type = "followers", onProgress, options = {
     await new Promise(r => setTimeout(r, delayMs));
   }
 
-  return users;
+// Multi-pass collector to combine multiple sessions for large accounts (>1500 users)
+async function collectCompleteUserList(userId, type = "followers", expectedTotal = 0, onProgress, options = {}) {
+  const maxLimit = options.maxLimit || 10000;
+  const targetTotal = Math.min(expectedTotal || maxLimit, maxLimit);
+  const usersMap = new Map();
+
+  // For profiles with >1500 users, use up to 3 automatic passes to defeat Instagram pagination sampling
+  const maxPasses = (expectedTotal > 1500 && maxLimit > 1500) ? 3 : 1;
+
+  for (let pass = 1; pass <= maxPasses; pass++) {
+    const prevCount = usersMap.size;
+    const passPrefix = maxPasses > 1 ? `[Passagem ${pass}/${maxPasses}] ` : '';
+
+    const pageUsers = await fetchUserList(userId, type, (t, count, extra) => {
+      const currentCombined = Math.max(usersMap.size, count);
+      if (onProgress) {
+        const perc = targetTotal > 0 ? ` (${Math.min(100, Math.round((currentCombined / targetTotal) * 100))}%)` : '';
+        const msg = extra || `${passPrefix}Coletando ${type === 'followers' ? 'seguidores' : 'seguindo'}: ${currentCombined}${targetTotal ? ` de ${targetTotal}` : ''}${perc}...`;
+        onProgress(t, currentCombined, msg);
+      }
+    }, options);
+
+    for (const u of pageUsers) {
+      const clean = (u.username || "").toLowerCase().trim();
+      if (clean && !usersMap.has(clean)) {
+        usersMap.set(clean, u);
+      }
+    }
+
+    const currentCount = usersMap.size;
+    const newlyAdded = currentCount - prevCount;
+    console.log(`[InSnitch] Passagem ${pass}/${maxPasses} concluída para ${type}. Total acumulado: ${currentCount} (+${newlyAdded} novos)`);
+
+    // If reached close to 100% of target or base stabilized
+    if (targetTotal > 0 && currentCount >= targetTotal * 0.98) {
+      break;
+    }
+    if (pass > 1 && newlyAdded < 10) {
+      console.log(`[InSnitch] Base estabilizada (poucos novos na passagem ${pass}), finalizando ${type}.`);
+      break;
+    }
+
+    if (pass < maxPasses) {
+      if (onProgress) {
+        onProgress(type, currentCount, `Passagem ${pass} concluída (${currentCount} catalogados). Otimizando passagem ${pass + 1}...`);
+      }
+      await new Promise(r => setTimeout(r, 2500));
+    }
+  }
+
+  return Array.from(usersMap.values());
 }
 
 // Listen for messages from the popup
@@ -242,19 +292,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const expectedFollowers = profileInfo.followers_count || 0;
         const expectedFollowing = profileInfo.following_count || 0;
 
-        // 2. Fetch Followers
-        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
-        const followers = await fetchUserList(targetId, "followers", (type, count, extraMsg) => {
-          const perc = expectedFollowers > 0 ? ` (${Math.min(100, Math.round((count / expectedFollowers) * 100))}%)` : '';
-          const msg = extraMsg || `Coletando seguidores: ${count}${expectedFollowers ? ` de ${expectedFollowers}` : ''}${perc}...`;
+        // 2. Fetch Followers (using multi-pass collector)
+        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Iniciando coleta de seguidores..." });
+        const followers = await collectCompleteUserList(targetId, "followers", expectedFollowers, (type, count, msg) => {
           chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
         }, scanOptions);
 
-        // 3. Fetch Following
-        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
-        const following = await fetchUserList(targetId, "following", (type, count, extraMsg) => {
-          const perc = expectedFollowing > 0 ? ` (${Math.min(100, Math.round((count / expectedFollowing) * 100))}%)` : '';
-          const msg = extraMsg || `Coletando seguindo: ${count}${expectedFollowing ? ` de ${expectedFollowing}` : ''}${perc}...`;
+        // 3. Fetch Following (using multi-pass collector)
+        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Iniciando coleta de seguidos..." });
+        const following = await collectCompleteUserList(targetId, "following", expectedFollowing, (type, count, msg) => {
           chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
         }, scanOptions);
 
