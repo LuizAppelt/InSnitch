@@ -146,6 +146,7 @@ function setupEventListeners() {
 
             document.getElementById("res-new").innerText = `+${counts.new_followers_count || 0}`;
             document.getElementById("res-lost").innerText = `-${counts.lost_followers_count || 0}`;
+            document.getElementById("res-following").innerText = `+${counts.new_following_count || 0}`;
             document.getElementById("res-not-following").innerText = (counts.not_following_back_count || 0).toLocaleString();
 
           } catch (backendErr) {

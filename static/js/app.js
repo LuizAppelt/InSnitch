@@ -24,6 +24,7 @@ const statLastScan = document.getElementById("stat-last-scan");
 // Metrics Hub Elements
 const metricNewFollowers = document.getElementById("metric-new-followers");
 const metricLostFollowers = document.getElementById("metric-lost-followers");
+const metricNewFollowing = document.getElementById("metric-new-following");
 const metricLostFollowing = document.getElementById("metric-lost-following");
 const metricMutual = document.getElementById("metric-mutual");
 const metricNotFollowingBack = document.getElementById("metric-not-following-back");
@@ -34,9 +35,11 @@ const metricGhosts = document.getElementById("metric-ghosts");
 // Badges & Lists Elements
 const badgeCountNew = document.getElementById("badge-count-new");
 const badgeCountLost = document.getElementById("badge-count-lost");
+const badgeCountNewFollowing = document.getElementById("badge-count-new-following");
 const badgeCountLostFollowing = document.getElementById("badge-count-lost-following");
 const listNewFollowers = document.getElementById("list-new-followers");
 const listLostFollowers = document.getElementById("list-lost-followers");
+const listNewFollowing = document.getElementById("list-new-following");
 const listLostFollowing = document.getElementById("list-lost-following");
 const listMutual = document.getElementById("list-mutual");
 const listNotFollowingBack = document.getElementById("list-not-following-back");
@@ -288,10 +291,12 @@ function renderMetrics(diff) {
 
   const newCount = counts.new_followers_count || 0;
   const lostCount = counts.lost_followers_count || 0;
+  const newFollowingCount = counts.new_following_count || 0;
   const lostFollowingCount = counts.lost_following_count || 0;
 
   metricNewFollowers.innerText = `+${newCount}`;
   metricLostFollowers.innerText = `-${lostCount}`;
+  if (metricNewFollowing) metricNewFollowing.innerText = `+${newFollowingCount}`;
   if (metricLostFollowing) metricLostFollowing.innerText = `-${lostFollowingCount}`;
   if (metricMutual) metricMutual.innerText = (counts.mutual_count || 0).toLocaleString();
   metricNotFollowingBack.innerText = (counts.not_following_back_count || 0).toLocaleString();
@@ -301,6 +306,7 @@ function renderMetrics(diff) {
 
   badgeCountNew.innerText = newCount;
   badgeCountLost.innerText = lostCount;
+  if (badgeCountNewFollowing) badgeCountNewFollowing.innerText = newFollowingCount;
   if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowingCount;
 }
 
@@ -314,6 +320,8 @@ function createUserRowHtml(user, badgeType) {
     badgeHtml = '<span class="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full">+ Novo Seguidor</span>';
   } else if (badgeType === 'lost') {
     badgeHtml = '<span class="text-[10px] font-bold bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full">- Deixou de Seguir</span>';
+  } else if (badgeType === 'new_following') {
+    badgeHtml = '<span class="text-[10px] font-bold bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full">+ Você Seguiu</span>';
   } else if (badgeType === 'lost_following') {
     badgeHtml = '<span class="text-[10px] font-bold bg-orange-500/10 text-orange-500 px-2 py-0.5 rounded-full">- Você deu Unfollow</span>';
   } else if (badgeType === 'verified') {
@@ -348,6 +356,7 @@ function createUserRowHtml(user, badgeType) {
 function renderDiffs(diff) {
   const newFollowers = diff.diffs?.new_followers || [];
   const lostFollowers = diff.diffs?.lost_followers || [];
+  const newFollowing = diff.diffs?.new_following || [];
   const lostFollowing = diff.diffs?.lost_following || [];
 
   if (newFollowers.length === 0) {
@@ -370,6 +379,19 @@ function renderDiffs(diff) {
     `;
   } else {
     listLostFollowers.innerHTML = lostFollowers.map(u => createUserRowHtml(u, 'lost')).join('');
+  }
+
+  if (listNewFollowing) {
+    if (newFollowing.length === 0) {
+      listNewFollowing.innerHTML = `
+        <div class="text-center py-6 text-ig-grayText text-xs">
+          <i data-lucide="user-plus" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-blue-500"></i>
+          <p>Você não começou a seguir ninguém.</p>
+        </div>
+      `;
+    } else {
+      listNewFollowing.innerHTML = newFollowing.map(u => createUserRowHtml(u, 'new_following')).join('');
+    }
   }
 
   if (listLostFollowing) {

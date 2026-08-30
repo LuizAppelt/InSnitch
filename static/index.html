@@ -222,7 +222,7 @@
       <section id="metrics-hub-section" class="my-6 flex flex-col gap-3">
         
         <!-- TIER 1: MOVIMENTAÇÕES RECENTES (ÚLTIMA VARREDURA) -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           
           <!-- 1. Novos Seguidores -->
           <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-emerald-500/50 transition flex flex-col justify-between">
@@ -252,12 +252,26 @@
             </div>
           </div>
 
-          <!-- 3. Você Deixou de Seguir -->
+          <!-- 3. Você Começou a Seguir -->
+          <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-blue-500/50 transition flex flex-col justify-between">
+            <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
+              <span>Começou a Seguir</span>
+              <div class="w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="metric-new-following" class="text-2xl font-bold text-blue-500">+0</span>
+              <span class="text-[11px] text-ig-grayText">seguidos seus</span>
+            </div>
+          </div>
+
+          <!-- 4. Você Deixou de Seguir -->
           <div onclick="switchTab('tab-changes')" class="metric-card bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder p-4 rounded-2xl cursor-pointer hover:border-orange-500/50 transition flex flex-col justify-between">
             <div class="flex items-center justify-between text-xs text-ig-grayText font-medium mb-1.5">
               <span>Você Deixou de Seguir</span>
               <div class="w-6 h-6 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center">
-                <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+                <i data-lucide="user-x" class="w-3.5 h-3.5"></i>
               </div>
             </div>
             <div class="flex items-baseline gap-1.5">
@@ -369,9 +383,9 @@
       <!-- TAB CONTENTS -->
       <section class="mt-6">
         
-        <!-- 1. TAB: MUDANÇAS (3 Colunas de Diffs) -->
+        <!-- 1. TAB: MUDANÇAS (4 Colunas de Diffs) -->
         <div id="tab-changes" class="tab-content">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             
             <!-- Novos Seguidores -->
             <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-4">
@@ -397,6 +411,20 @@
                 </div>
               </div>
               <div id="list-lost-followers" class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
+                <!-- User rows rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Você Começou a Seguir -->
+            <div class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-2xl p-4">
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-ig-lightBorder dark:border-ig-darkBorder">
+                <div class="flex items-center gap-2 font-semibold text-xs">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <span>Começou a Seguir</span>
+                  <span id="badge-count-new-following" class="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">0</span>
+                </div>
+              </div>
+              <div id="list-new-following" class="flex flex-col gap-2.5 max-h-96 overflow-y-auto pr-1">
                 <!-- User rows rendered dynamically -->
               </div>
             </div>

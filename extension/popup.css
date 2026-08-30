@@ -198,11 +198,11 @@ body {
 
 .metrics-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
   text-align: center;
   background-color: rgba(0, 0, 0, 0.3);
-  padding: 8px;
+  padding: 8px 4px;
   border-radius: 8px;
 }
 
@@ -213,12 +213,13 @@ body {
 }
 
 .metric-item .metric-lbl {
-  font-size: 9px;
+  font-size: 8px;
   color: #8e8e8e;
 }
 
 .text-green { color: #20c997; }
 .text-red { color: #ed4956; }
+.text-blue { color: #0095f6; }
 .text-amber { color: #f59f00; }
 
 /* ERROR */
