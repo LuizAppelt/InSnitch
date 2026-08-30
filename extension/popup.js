@@ -1,4 +1,4 @@
-const BACKEND_URL = "http://127.0.0.1:8000";
+﻿const BACKEND_URL = "http://127.0.0.1:8000";
 
 let currentDetectedUsername = null;
 let currentTabId = null;
@@ -72,37 +72,11 @@ async function detectActiveTabProfile() {
   }
 }
 
-// 3. Listen for real-time status and completion events from content script
+// 3. Listen for background status updates
 chrome.runtime.onMessage.addListener((msg) => {
-  const progressBox = document.getElementById("progress-box");
-  const progressText = document.getElementById("progress-text");
-  const resultCard = document.getElementById("result-card");
-  const errorBox = document.getElementById("error-box");
-  const errorText = document.getElementById("error-text");
-  const btnSync = document.getElementById("btn-sync");
-
   if (msg.action === "UPDATE_STATUS") {
+    const progressText = document.getElementById("progress-text");
     if (progressText) progressText.innerText = msg.message;
-  }
-
-  if (msg.action === "SYNC_COMPLETE") {
-    const counts = msg.result?.diff?.counts || {};
-    if (progressBox) progressBox.classList.add("hidden");
-    if (resultCard) resultCard.classList.remove("hidden");
-    if (errorBox) errorBox.classList.add("hidden");
-
-    document.getElementById("res-new").innerText = `+${counts.new_followers_count || 0}`;
-    document.getElementById("res-lost").innerText = `-${counts.lost_followers_count || 0}`;
-    document.getElementById("res-following").innerText = `+${counts.new_following_count || 0}`;
-    document.getElementById("res-not-following").innerText = (counts.not_following_back_count || 0).toLocaleString();
-    if (btnSync) btnSync.disabled = false;
-  }
-
-  if (msg.action === "SYNC_ERROR") {
-    if (progressBox) progressBox.classList.add("hidden");
-    if (errorBox) errorBox.classList.remove("hidden");
-    if (errorText) errorText.innerText = msg.error || "Erro durante a sincronização.";
-    if (btnSync) btnSync.disabled = false;
   }
 });
 
@@ -148,6 +122,7 @@ function setupEventListeners() {
     const progressText = document.getElementById("progress-text");
     const resultCard = document.getElementById("result-card");
     const errorBox = document.getElementById("error-box");
+    const errorText = document.getElementById("error-text");
 
     progressBox.classList.remove("hidden");
     resultCard.classList.add("hidden");
@@ -158,10 +133,10 @@ function setupEventListeners() {
     // Determine delay and limit from options
     const mode = selectMode ? selectMode.value : "safe";
     const limit = selectLimit ? parseInt(selectLimit.value) : 3000;
-    const delay = mode === "fast" ? 350 : 650;
+    const delay = mode === "fast" ? 350 : 750;
 
     try {
-      // Ensure content script is injected
+      // Auto-inject content script proactively
       try {
         await chrome.scripting.executeScript({
           target: { tabId: currentTabId },
@@ -169,18 +144,70 @@ function setupEventListeners() {
         });
       } catch (e) {}
 
+      // Send message to content script
       chrome.tabs.sendMessage(
         currentTabId,
         { 
           action: "EXTRACT_ALL_DATA", 
           username: currentDetectedUsername,
           options: { delay, maxLimit: limit }
+        },
+        async (response) => {
+          if (chrome.runtime.lastError) {
+            progressBox.classList.add("hidden");
+            errorBox.classList.remove("hidden");
+            errorText.innerText = "Recarregue a página do Instagram (F5) e clique em Sincronizar.";
+            btnSync.disabled = false;
+            return;
+          }
+
+          if (!response || !response.success) {
+            progressBox.classList.add("hidden");
+            errorBox.classList.remove("hidden");
+            errorText.innerText = response?.error || "Erro durante a extração dos dados.";
+            btnSync.disabled = false;
+            return;
+          }
+
+          progressText.innerText = "Enviando dados para o InSnitch...";
+
+          // Send extracted data to local backend
+          try {
+            const backendRes = await fetch(`${BACKEND_URL}/api/extension/import`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(response.data)
+            });
+
+            if (!backendRes.ok) {
+              const errData = await backendRes.json();
+              throw new Error(errData.detail || "Falha ao gravar no dashboard.");
+            }
+
+            const importResult = await backendRes.json();
+            const counts = importResult.diff?.counts || {};
+
+            // Show Result
+            progressBox.classList.add("hidden");
+            resultCard.classList.remove("hidden");
+
+            document.getElementById("res-new").innerText = `+${counts.new_followers_count || 0}`;
+            document.getElementById("res-lost").innerText = `-${counts.lost_followers_count || 0}`;
+            document.getElementById("res-following").innerText = `+${counts.new_following_count || 0}`;
+            document.getElementById("res-not-following").innerText = (counts.not_following_back_count || 0).toLocaleString();
+
+          } catch (backendErr) {
+            progressBox.classList.add("hidden");
+            errorBox.classList.remove("hidden");
+            errorText.innerText = `Erro no Dashboard: ${backendErr.message}. Verifique se 'python run.py' está rodando.`;
+            btnSync.disabled = false;
+          }
         }
       );
     } catch (err) {
       progressBox.classList.add("hidden");
       errorBox.classList.remove("hidden");
-      document.getElementById("error-text").innerText = "Recarregue a página do Instagram (F5) e tente novamente.";
+      errorText.innerText = err.message;
       btnSync.disabled = false;
     }
   });
