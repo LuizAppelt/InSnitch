@@ -189,6 +189,12 @@ function setupEventListeners() {
             return;
           }
 
+          if (response?.isAsyncAuto) {
+            progressText.innerText = "Multi-pass iniciado! Acompanhe o progresso no banner na página do Instagram.";
+            btnSync.disabled = true;
+            return;
+          }
+
           await handleExtractSuccess(response);
         }
       );
