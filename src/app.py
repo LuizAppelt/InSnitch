@@ -21,7 +21,7 @@ from src.database import (
     set_setting,
     get_setting
 )
-from src.diff_engine import calculate_diff
+from src.diff_engine import calculate_diff, get_profile_history_events
 from src.instagram_service import fetch_profile_data
 from src.ai_reporter import generate_ai_report
 
@@ -154,6 +154,7 @@ async def track_profile(req: TrackRequest):
 
     # Return full package
     profile_obj = get_profile_by_username(username)
+    history_events = get_profile_history_events(profile_id)
 
     return {
         "success": True,
@@ -161,6 +162,7 @@ async def track_profile(req: TrackRequest):
         "current_snapshot_id": new_snapshot_id,
         "previous_snapshot_id": prev_snapshot_id,
         "diff": diff_result,
+        "history_events": history_events,
         "ai_report": ai_report_text
     }
 
@@ -230,6 +232,7 @@ async def extension_import(req: ExtensionImportRequest):
     save_ai_report(profile_id, new_snapshot_id, prev_snapshot_id, ai_report_text)
 
     profile_obj = get_profile_by_username(username)
+    history_events = get_profile_history_events(profile_id)
 
     return {
         "success": True,
@@ -237,6 +240,7 @@ async def extension_import(req: ExtensionImportRequest):
         "profile": profile_obj,
         "snapshot_id": new_snapshot_id,
         "diff": diff_result,
+        "history_events": history_events,
         "ai_report": ai_report_text
     }
 
@@ -254,13 +258,44 @@ async def get_profile_diff(username: str):
     prev_id = prev_snap["id"] if prev_snap else None
     diff_result = calculate_diff(latest_snap["id"], prev_id)
     ai_report = get_latest_ai_report(profile["id"])
+    history_events = get_profile_history_events(profile["id"])
 
     return {
         "profile": profile,
         "latest_snapshot": latest_snap,
         "previous_snapshot": prev_snap,
         "diff": diff_result,
+        "history_events": history_events,
         "ai_report": ai_report["report_text"] if ai_report else ""
+    }
+
+@app.get("/api/profiles/{username}/snapshots/{snapshot_id}/diff")
+async def get_specific_snapshot_diff(username: str, snapshot_id: int):
+    clean_username = sanitize_username(username)
+    profile = get_profile_by_username(clean_username)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Perfil não encontrado.")
+
+    snapshots = get_snapshots_for_profile(profile["id"])
+    # Find snapshot index in chronologically ordered list
+    chronological = list(reversed(snapshots))
+    target_idx = None
+    for idx, s in enumerate(chronological):
+        if s["id"] == snapshot_id:
+            target_idx = idx
+            break
+
+    if target_idx is None:
+        raise HTTPException(status_code=404, detail="Snapshot não encontrado.")
+
+    prev_id = chronological[target_idx - 1]["id"] if target_idx > 0 else None
+    diff_result = calculate_diff(snapshot_id, prev_id)
+
+    return {
+        "profile": profile,
+        "current_snapshot": chronological[target_idx],
+        "previous_snapshot": chronological[target_idx - 1] if target_idx > 0 else None,
+        "diff": diff_result
     }
 
 @app.get("/api/profiles/{username}/history")

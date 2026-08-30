@@ -108,3 +108,87 @@ def calculate_diff(current_snapshot_id: int, previous_snapshot_id: Optional[int]
             "ghost_followers": ghost_followers_list
         }
     }
+
+def get_profile_history_events(profile_id: int) -> Dict[str, Any]:
+    """
+    Computes all historical events (unfollows, new followers, followed, lost following)
+    across all stored snapshots for a profile, preserving chronological timestamps.
+    """
+    from src.database import get_snapshots_for_profile
+    snapshots = get_snapshots_for_profile(profile_id)
+    if not snapshots:
+        return {
+            "snapshots": [],
+            "all_time_events": {
+                "new_followers": [],
+                "lost_followers": [],
+                "new_following": [],
+                "lost_following": []
+            },
+            "all_time_counts": {
+                "total_new_followers": 0,
+                "total_lost_followers": 0,
+                "total_new_following": 0,
+                "total_lost_following": 0
+            }
+        }
+
+    chronological_snapshots = list(reversed(snapshots))
+
+    all_new_followers = []
+    all_lost_followers = []
+    all_new_following = []
+    all_lost_following = []
+
+    for i in range(1, len(chronological_snapshots)):
+        prev_s = chronological_snapshots[i - 1]
+        curr_s = chronological_snapshots[i]
+
+        diff = calculate_diff(curr_s["id"], prev_s["id"])
+        ts = curr_s.get("timestamp", "")
+
+        for u in diff["diffs"]["new_followers"]:
+            item = dict(u)
+            item["event_timestamp"] = ts
+            item["snapshot_id"] = curr_s["id"]
+            all_new_followers.append(item)
+
+        for u in diff["diffs"]["lost_followers"]:
+            item = dict(u)
+            item["event_timestamp"] = ts
+            item["snapshot_id"] = curr_s["id"]
+            all_lost_followers.append(item)
+
+        for u in diff["diffs"]["new_following"]:
+            item = dict(u)
+            item["event_timestamp"] = ts
+            item["snapshot_id"] = curr_s["id"]
+            all_new_following.append(item)
+
+        for u in diff["diffs"]["lost_following"]:
+            item = dict(u)
+            item["event_timestamp"] = ts
+            item["snapshot_id"] = curr_s["id"]
+            all_lost_following.append(item)
+
+    # Sort events newest first
+    all_new_followers.reverse()
+    all_lost_followers.reverse()
+    all_new_following.reverse()
+    all_lost_following.reverse()
+
+    return {
+        "snapshots": snapshots,
+        "all_time_events": {
+            "new_followers": all_new_followers,
+            "lost_followers": all_lost_followers,
+            "new_following": all_new_following,
+            "lost_following": all_lost_following
+        },
+        "all_time_counts": {
+            "total_new_followers": len(all_new_followers),
+            "total_lost_followers": len(all_lost_followers),
+            "total_new_following": len(all_new_following),
+            "total_lost_following": len(all_lost_following)
+        }
+    }

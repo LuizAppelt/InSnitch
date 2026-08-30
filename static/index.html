@@ -383,8 +383,34 @@
       <!-- TAB CONTENTS -->
       <section class="mt-6">
         
-        <!-- 1. TAB: MUDANÇAS (4 Colunas de Diffs) -->
+        <!-- 1. TAB: MUDANÇAS (Histórico Acumulado & Diffs com 4 Colunas) -->
         <div id="tab-changes" class="tab-content">
+          
+          <!-- HISTÓRICO / SCOPE SELECTOR CONTROLS -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 p-3 rounded-2xl bg-ig-lightHover/50 dark:bg-ig-darkHover/50 border border-ig-lightBorder dark:border-ig-darkBorder text-xs">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-semibold text-ig-darkText dark:text-ig-whiteText flex items-center gap-1.5">
+                <i data-lucide="history" class="w-4 h-4 text-ig-primary"></i>
+                <span>Histórico:</span>
+              </span>
+              <div class="inline-flex rounded-xl bg-ig-lightCard dark:bg-ig-darkCard p-1 border border-ig-lightBorder dark:border-ig-darkBorder">
+                <button onclick="setChangesViewMode('all_time')" id="btn-mode-all-time" class="px-3 py-1 rounded-lg text-[11px] font-semibold transition bg-ig-primary text-white shadow-sm">
+                  🗓️ Todo o Histórico (Acumulado)
+                </button>
+                <button onclick="setChangesViewMode('latest')" id="btn-mode-latest" class="px-3 py-1 rounded-lg text-[11px] font-semibold text-ig-grayText hover:text-ig-darkText dark:hover:text-white transition">
+                  ⚡ Apenas Última Varredura
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <span class="text-ig-grayText text-[11px] whitespace-nowrap">Ver no tempo:</span>
+              <select id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none cursor-pointer">
+                <option value="all">Todas as Varreduras (Acumulado)</option>
+              </select>
+            </div>
+          </div>
+
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             
             <!-- Novos Seguidores -->

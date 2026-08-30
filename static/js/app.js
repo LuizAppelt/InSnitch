@@ -1,6 +1,8 @@
 // State
 let currentProfile = null;
 let currentDiff = null;
+let currentHistoryEvents = null;
+let changesViewMode = 'all_time'; // 'all_time' or 'latest'
 let currentReciprocity = { not_following_back: [], fans: [], mutual: [], verified: [], ghosts: [] };
 let chartInstance = null;
 let isMockMode = false;
@@ -186,10 +188,12 @@ async function trackProfile(usernameOrUrl, useMock) {
 
     currentProfile = data.profile;
     currentDiff = data.diff;
+    currentHistoryEvents = data.history_events || null;
     currentReciprocity = data.diff.reciprocity;
 
     renderProfileHeader(data.profile);
     renderMetrics(data.diff);
+    renderSnapshotHistoryDropdown(data.history_events?.snapshots || []);
     renderDiffs(data.diff);
     renderReciprocityLists();
     renderAiReport(data.ai_report);
@@ -211,10 +215,12 @@ async function fetchProfileDiff(username) {
     if (res.ok) {
       currentProfile = data.profile;
       currentDiff = data.diff;
+      currentHistoryEvents = data.history_events || null;
       currentReciprocity = data.diff.reciprocity;
 
       renderProfileHeader(data.profile);
       renderMetrics(data.diff);
+      renderSnapshotHistoryDropdown(data.history_events?.snapshots || []);
       renderDiffs(data.diff);
       renderReciprocityLists();
       renderAiReport(data.ai_report);
@@ -310,6 +316,14 @@ function renderMetrics(diff) {
   if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowingCount;
 }
 
+// Date Formatter Helper
+function formatEventDate(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  return `${d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+}
+
 // Render User Row Item Helper
 function createUserRowHtml(user, badgeType) {
   const rawAvatar = user.profile_pic_url;
@@ -330,6 +344,13 @@ function createUserRowHtml(user, badgeType) {
     badgeHtml = '<span class="text-[10px] font-bold bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded-full">👻 Fantasma</span>';
   }
 
+  const timestampHtml = user.event_timestamp ? `
+    <span class="text-[10px] text-ig-grayText block mt-0.5 font-normal flex items-center gap-1">
+      <i data-lucide="clock" class="w-3 h-3 text-ig-grayText/70 inline"></i>
+      <span>Detectado em ${formatEventDate(user.event_timestamp)}</span>
+    </span>
+  ` : '';
+
   return `
     <div class="user-row flex items-center justify-between p-2.5 rounded-xl bg-ig-lightHover/50 dark:bg-ig-darkHover/50 border border-ig-lightBorder/50 dark:border-ig-darkBorder/50">
       <div class="flex items-center gap-3 min-w-0">
@@ -340,6 +361,7 @@ function createUserRowHtml(user, badgeType) {
             ${user.is_verified ? '<span class="text-ig-primary"><svg class="w-3.5 h-3.5 fill-current inline" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>' : ''}
           </div>
           <p class="text-[11px] text-ig-grayText truncate">${user.full_name || 'Usuário do Instagram'}</p>
+          ${timestampHtml}
         </div>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
@@ -352,41 +374,68 @@ function createUserRowHtml(user, badgeType) {
   `;
 }
 
-// Render Diffs Tab
+// Render Diffs Tab (With All-Time Cumulative vs Single Scan support)
 function renderDiffs(diff) {
-  const newFollowers = diff.diffs?.new_followers || [];
-  const lostFollowers = diff.diffs?.lost_followers || [];
-  const newFollowing = diff.diffs?.new_following || [];
-  const lostFollowing = diff.diffs?.lost_following || [];
+  let newFollowers = [];
+  let lostFollowers = [];
+  let newFollowing = [];
+  let lostFollowing = [];
 
+  const isAllTime = (changesViewMode === 'all_time') && currentHistoryEvents && (currentHistoryEvents.snapshots?.length > 1);
+
+  if (isAllTime) {
+    newFollowers = currentHistoryEvents.all_time_events?.new_followers || [];
+    lostFollowers = currentHistoryEvents.all_time_events?.lost_followers || [];
+    newFollowing = currentHistoryEvents.all_time_events?.new_following || [];
+    lostFollowing = currentHistoryEvents.all_time_events?.lost_following || [];
+
+    if (badgeCountNew) badgeCountNew.innerText = newFollowers.length;
+    if (badgeCountLost) badgeCountLost.innerText = lostFollowers.length;
+    if (badgeCountNewFollowing) badgeCountNewFollowing.innerText = newFollowing.length;
+    if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowing.length;
+  } else {
+    newFollowers = diff?.diffs?.new_followers || [];
+    lostFollowers = diff?.diffs?.lost_followers || [];
+    newFollowing = diff?.diffs?.new_following || [];
+    lostFollowing = diff?.diffs?.lost_following || [];
+
+    if (badgeCountNew) badgeCountNew.innerText = newFollowers.length;
+    if (badgeCountLost) badgeCountLost.innerText = lostFollowers.length;
+    if (badgeCountNewFollowing) badgeCountNewFollowing.innerText = newFollowing.length;
+    if (badgeCountLostFollowing) badgeCountLostFollowing.innerText = lostFollowing.length;
+  }
+
+  // 1. Novos Seguidores
   if (newFollowers.length === 0) {
     listNewFollowers.innerHTML = `
       <div class="text-center py-6 text-ig-grayText text-xs">
         <i data-lucide="check-circle" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-emerald-500"></i>
-        <p>Nenhum novo seguidor nesta varredura.</p>
+        <p>${isAllTime ? 'Nenhum novo seguidor no histórico.' : 'Nenhum novo seguidor nesta varredura.'}</p>
       </div>
     `;
   } else {
     listNewFollowers.innerHTML = newFollowers.map(u => createUserRowHtml(u, 'new')).join('');
   }
 
+  // 2. Deixaram de Seguir
   if (lostFollowers.length === 0) {
     listLostFollowers.innerHTML = `
       <div class="text-center py-6 text-ig-grayText text-xs">
         <i data-lucide="smile" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-rose-500"></i>
-        <p>Nenhum unfollow recebido.</p>
+        <p>${isAllTime ? 'Nenhum unfollow registrado no histórico.' : 'Nenhum unfollow recebido nesta varredura.'}</p>
       </div>
     `;
   } else {
     listLostFollowers.innerHTML = lostFollowers.map(u => createUserRowHtml(u, 'lost')).join('');
   }
 
+  // 3. Começou a Seguir
   if (listNewFollowing) {
     if (newFollowing.length === 0) {
       listNewFollowing.innerHTML = `
         <div class="text-center py-6 text-ig-grayText text-xs">
           <i data-lucide="user-plus" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-blue-500"></i>
-          <p>Você não começou a seguir ninguém.</p>
+          <p>${isAllTime ? 'Nenhum perfil seguido no histórico.' : 'Você não começou a seguir ninguém.'}</p>
         </div>
       `;
     } else {
@@ -394,12 +443,13 @@ function renderDiffs(diff) {
     }
   }
 
+  // 4. Você Deixou de Seguir
   if (listLostFollowing) {
     if (lostFollowing.length === 0) {
       listLostFollowing.innerHTML = `
         <div class="text-center py-6 text-ig-grayText text-xs">
           <i data-lucide="check" class="w-5 h-5 mx-auto mb-1.5 opacity-50 text-orange-500"></i>
-          <p>Você não deu unfollow em ninguém.</p>
+          <p>${isAllTime ? 'Nenhum unfollow seu no histórico.' : 'Você não deu unfollow em ninguém.'}</p>
         </div>
       `;
     } else {
@@ -408,6 +458,76 @@ function renderDiffs(diff) {
   }
 
   lucide.createIcons();
+}
+
+function setChangesViewMode(mode) {
+  changesViewMode = mode;
+  const btnAll = document.getElementById("btn-mode-all-time");
+  const btnLatest = document.getElementById("btn-mode-latest");
+  const selectSnap = document.getElementById("select-snapshot-history");
+
+  if (mode === 'all_time') {
+    if (btnAll) {
+      btnAll.className = "px-3 py-1 rounded-lg text-[11px] font-semibold transition bg-ig-primary text-white shadow-sm";
+    }
+    if (btnLatest) {
+      btnLatest.className = "px-3 py-1 rounded-lg text-[11px] font-semibold text-ig-grayText hover:text-ig-darkText dark:hover:text-white transition";
+    }
+    if (selectSnap) selectSnap.value = "all";
+    renderDiffs(currentDiff);
+  } else {
+    if (btnAll) {
+      btnAll.className = "px-3 py-1 rounded-lg text-[11px] font-semibold text-ig-grayText hover:text-ig-darkText dark:hover:text-white transition";
+    }
+    if (btnLatest) {
+      btnLatest.className = "px-3 py-1 rounded-lg text-[11px] font-semibold transition bg-ig-primary text-white shadow-sm";
+    }
+    renderDiffs(currentDiff);
+  }
+}
+
+function renderSnapshotHistoryDropdown(snapshots) {
+  const select = document.getElementById("select-snapshot-history");
+  if (!select) return;
+
+  if (!snapshots || snapshots.length <= 1) {
+    select.innerHTML = '<option value="all">Todas as Varreduras (Acumulado)</option>';
+    return;
+  }
+
+  let html = '<option value="all">Todas as Varreduras (Acumulado)</option>';
+  snapshots.forEach((s, idx) => {
+    const d = new Date(s.timestamp);
+    const dateStr = !isNaN(d.getTime()) ? `${d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})} às ${d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}` : s.timestamp;
+    const num = snapshots.length - idx;
+    html += `<option value="${s.id}">Varredura #${num} — ${dateStr} (${s.followers_count} seguidores)</option>`;
+  });
+  select.innerHTML = html;
+}
+
+async function onSnapshotSelectChange(val) {
+  if (val === 'all') {
+    setChangesViewMode('all_time');
+    return;
+  }
+
+  if (!currentProfile) return;
+
+  try {
+    const res = await fetch(`/api/profiles/${currentProfile.username}/snapshots/${val}/diff`);
+    const data = await res.json();
+    if (res.ok && data.diff) {
+      changesViewMode = 'latest';
+      const btnAll = document.getElementById("btn-mode-all-time");
+      const btnLatest = document.getElementById("btn-mode-latest");
+      if (btnAll) btnAll.className = "px-3 py-1 rounded-lg text-[11px] font-semibold text-ig-grayText hover:text-ig-darkText dark:hover:text-white transition";
+      if (btnLatest) btnLatest.className = "px-3 py-1 rounded-lg text-[11px] font-semibold transition bg-ig-primary text-white shadow-sm";
+
+      renderDiffs(data.diff);
+    }
+  } catch (e) {
+    console.error("Erro ao carregar snapshot:", e);
+  }
 }
 
 // Render Reciprocity Lists
