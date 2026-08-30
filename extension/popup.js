@@ -189,14 +189,6 @@ function setupEventListeners() {
             return;
           }
 
-          if (response?.isAsyncAuto) {
-            progressText.innerText = "Sincronização iniciada! Acompanhe o banner na página do Instagram.";
-            setTimeout(() => {
-              progressText.innerText = "A coleta continua mesmo se você fechar este pop-up.";
-            }, 3000);
-            return;
-          }
-
           await handleExtractSuccess(response);
         }
       );

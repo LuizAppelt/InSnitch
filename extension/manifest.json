@@ -6,12 +6,8 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage",
-    "tabs"
+    "storage"
   ],
-  "background": {
-    "service_worker": "background.js"
-  },
   "host_permissions": [
     "https://www.instagram.com/*",
     "http://127.0.0.1:8000/*",
