@@ -29,9 +29,9 @@ from src.ai_reporter import generate_ai_report
 init_db()
 
 app = FastAPI(
-    title="Instagram Follow Tracker & AI Analyzer",
+    title="InSnitch - Instagram Follow & Unfollow AI",
     version="1.0.0",
-    description="Sistema inteligente de monitoramento de seguidores e seguindo do Instagram com interface visual e IA."
+    description="Sistema inteligente InSnitch de monitoramento de seguidores, reciprocidade e unfollows do Instagram com IA."
 )
 
 app.add_middleware(

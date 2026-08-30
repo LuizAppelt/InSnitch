@@ -122,7 +122,7 @@ function setupEventListeners() {
             return;
           }
 
-          progressText.innerText = "Enviando dados para o InstaTracker...";
+          progressText.innerText = "Enviando dados para o InSnitch...";
 
           // Send extracted data to local backend
           try {

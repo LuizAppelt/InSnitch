@@ -1,5 +1,5 @@
-// InstaTracker Content Script - Runs inside Instagram Web tab
-console.log("[InstaTracker] Content script ativo na aba do Instagram.");
+// InSnitch Content Script - Runs inside Instagram Web tab
+console.log("[InSnitch] Content script ativo na aba do Instagram.");
 
 // Helper to get cookie by name in browser context
 function getCookie(name) {

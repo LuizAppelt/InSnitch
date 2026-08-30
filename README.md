@@ -1,6 +1,6 @@
-# 📸 Instagram Follow Tracker & AI Intelligence
+# 🕵️ InSnitch — Instagram Follow, Unfollow & Mutuals Radar
 
-Um aplicativo Web moderno com design idêntico ao **Instagram** para monitorar e analisar o histórico de **seguidores**, **unfollows** e **reciprocidade** de qualquer perfil público do Instagram, com relatórios gerados por Inteligência Artificial (**Google Gemini**).
+Um aplicativo Web moderno com design idêntico ao **Instagram** para monitorar e analisar o histórico de **seguidores**, **quem deixou de te seguir (unfollows)**, **amigos mútuos**, **verificados VIP** e **fantasmas** de qualquer perfil público do Instagram, com relatórios gerados por Inteligência Artificial (**Google Gemini**).
 
 ---
 
@@ -8,21 +8,25 @@ Um aplicativo Web moderno com design idêntico ao **Instagram** para monitorar e
 
 * 🎨 **Interface Idêntica ao Instagram Web**:
   * Temas **Escuro** (`#000000`) e **Claro** com alternância instantânea.
-  * Animação nos Stories/Avatar em tempo real durante as varreduras.
-  * Design limpo com fontes do Instagram, ícones Lucide e cartões de métricas.
-* 👥 **Rastreamento de Diffs e Mudanças**:
-  * 🟢 **Novos Seguidores**: Detecta quem começou a seguir o perfil desde a última checagem.
-  * 🔴 **Quem Deixou de Seguir (Unfollow)**: Lista exata de quem saiu da lista de seguidores.
-  * ⚠️ **Não Te Seguem de Volta**: Identifica quem você segue mas não é recíproco.
-  * ⭐ **Fãs**: Usuários que te seguem mas você não segue de volta.
+  * Animação de Stories/Avatar em tempo real durante as varreduras.
+  * Hub de métricas em 2 níveis harmônicos (Movimentações Recentes + Diagnóstico da Base).
+* 👥 **Rastreamento de Diffs e Movimentações**:
+  * 🟢 **Novos Seguidores**: Detecta quem começou a te seguir desde a última checagem.
+  * 🔴 **Quem Deixou de Seguir (Unfollows Deles)**: Lista exata de quem parou de te seguir.
+  * 🚶‍♂️ **Você Deixou de Seguir**: Registra contas que você removeu da sua lista de seguindo.
+  * 🤝 **Amigos Mútuos**: Identifica conexões recíprocas (ambos se seguem).
+  * ⚠️ **Não Te Seguem de Volta**: Lista quem você segue mas não é correspondido.
+  * ⭐ **Seus Fãs**: Usuários que te seguem mas você não segue de volta.
+  * 💎 **VIP / Selo Azul**: Filtra seguidores com selo oficial de verificação.
+  * 👻 **Fantasmas / Sem Foto**: Auditoria de perfis inativos ou sem imagem de avatar.
 * 🤖 **Análise Inteligente com Google Gemini**:
   * Diagnósticos de crescimento, retenção e dicas estratégicas em linguagem natural.
 * 📈 **Gráficos Interativos (Chart.js)**:
   * Curva de evolução de seguidores ao longo do tempo através dos snapshots locais.
 * 💾 **Histórico Seguro (SQLite)**:
-  * Todos os dados são salvos localmente no seu computador sem necessidade de configurar servidores de banco de dados.
-* 🧪 **Modo Simulação / Demonstração Integrado**:
-  * Permite testar imediatamente novos seguidores e unfollows com perfis realistas sem risco de bloqueio.
+  * Todos os dados são salvos localmente no seu computador com total privacidade.
+* 🧩 **Extensão InSnitch (Chrome / Edge)**:
+  * Sincronização em 1 clique direto da sua navegação no Instagram sem riscos de bloqueio.
 
 ---
 

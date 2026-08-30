@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "InstaTracker - Follow & Unfollow AI",
+  "name": "InSnitch - Instagram Follow & Unfollow Radar",
   "version": "1.0.0",
-  "description": "Sincronize seguidores e seguindo de qualquer perfil do Instagram com o seu dashboard local sem risco de bloqueio.",
+  "description": "Sincronize seguidores e descubra quem deixou de te seguir em qualquer perfil do Instagram com o painel local InSnitch.",
   "permissions": [
     "activeTab",
     "scripting"
@@ -14,7 +14,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "InstaTracker"
+    "default_title": "InSnitch"
   },
   "content_scripts": [
     {
