@@ -1,7 +1,7 @@
-// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
+﻿// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
 console.log("[InSnitch] Content script carregado com Suporte Alfabético A-Z.");
 
-// 1. Helpers for Cookies & CSRF Token
+// 1. Helpers for Cookies & Headers
 function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
   return match ? decodeURIComponent(match[3]) : '';
@@ -16,6 +16,20 @@ function getCsrfToken() {
     } catch (e) {}
   }
   return token || '';
+}
+
+function getIgHeaders() {
+  const headers = {
+    'x-ig-app-id': '936619743392459',
+    'x-asbd-id': '129477',
+    'x-requested-with': 'XMLHttpRequest',
+    'Accept': '*/*'
+  };
+  const csrf = getCsrfToken();
+  if (csrf) {
+    headers['x-csrftoken'] = csrf;
+  }
+  return headers;
 }
 
 // Extract username from URL pathname
@@ -52,14 +66,7 @@ async function extractProfileInfo(username) {
 
   // Layer 1: web_profile_info endpoint
   try {
-    const headers = {
-      'x-ig-app-id': '936619743392459',
-      'x-asbd-id': '129477',
-      'x-csrftoken': getCsrfToken(),
-      'x-requested-with': 'XMLHttpRequest',
-      'Accept': '*/*'
-    };
-
+    const headers = getIgHeaders();
     const res = await fetch(`https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`, {
       headers,
       credentials: 'include'
@@ -132,7 +139,7 @@ async function extractProfileInfo(username) {
     try {
       const feedRes = await fetch(`/api/v1/feed/user/${username}/username/`, {
         credentials: 'include',
-        headers: { 'x-ig-app-id': '936619743392459', 'x-csrftoken': getCsrfToken() }
+        headers: getIgHeaders()
       });
       if (feedRes.ok) {
         const feedData = await feedRes.json();
@@ -153,7 +160,7 @@ async function extractProfileInfo(username) {
     try {
       const searchRes = await fetch(`/api/v1/users/search/?q=${encodeURIComponent(username)}`, {
         credentials: 'include',
-        headers: { 'x-ig-app-id': '936619743392459' }
+        headers: getIgHeaders()
       });
       if (searchRes.ok) {
         const searchData = await searchRes.json();
@@ -186,15 +193,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   const seenUsernames = new Set();
   const seenMaxIds = new Set();
   let maxId = null;
-  const csrf = getCsrfToken();
-
-  const headers = {
-    'x-ig-app-id': '936619743392459',
-    'x-asbd-id': '129477',
-    'x-csrftoken': csrf,
-    'x-requested-with': 'XMLHttpRequest',
-    'Accept': '*/*'
-  };
+  const headers = getIgHeaders();
 
   for (let page = 0; page < 250; page++) {
     if (users.length >= maxLimit) break;
@@ -223,12 +222,9 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
         }
 
         if (!res.ok) {
-          let altUrl = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
+          let altUrl = `/api/v1/friendships/${userId}/${type}/?count=50`;
           if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
-          res = await fetch(altUrl, {
-            headers: { ...headers, 'User-Agent': navigator.userAgent },
-            credentials: 'include'
-          });
+          res = await fetch(altUrl, { headers, credentials: 'include' });
         }
 
         if (res.ok) {
@@ -238,9 +234,11 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
           success = true;
           break;
         } else {
+          console.warn(`[InSnitch] Resposta ${res.status} ao coletar ${type}, tentativa ${attempt}/3`);
           await new Promise(r => setTimeout(r, 1500));
         }
       } catch (err) {
+        console.warn(`[InSnitch] Erro de rede em ${type}:`, err);
         await new Promise(r => setTimeout(r, 1500));
       }
     }
@@ -275,7 +273,6 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
 }
 
 // 4. Fase 2: Varredura Alfabética A-Z (Alphabetical Partitioning)
-// Puxa seguidores por prefixos de busca para ultrapassar o limite de ~1.650 do cursor
 async function fetchAlphabeticalUsers(userId, type = "followers", usersMap, targetTotal = 0, onProgress, options = {}) {
   const delayMs = Math.max(350, (options.delay || 650) - 200);
   const chars = [
@@ -284,47 +281,37 @@ async function fetchAlphabeticalUsers(userId, type = "followers", usersMap, targ
     '0','1','2','3','4','5','6','7','8','9','_','.'
   ];
 
-  const csrf = getCsrfToken();
-  const headers = {
-    'x-ig-app-id': '936619743392459',
-    'x-asbd-id': '129477',
-    'x-csrftoken': csrf,
-    'x-requested-with': 'XMLHttpRequest',
-    'Accept': '*/*'
-  };
-
-  console.log(`[InSnitch] Iniciando Fase 2: Varredura Alfabética A-Z para capturar seguidores restantes (${usersMap.size}/${targetTotal})...`);
+  const headers = getIgHeaders();
+  console.log(`[InSnitch] Iniciando Fase 2: Varredura Alfabética A-Z (${usersMap.size}/${targetTotal})...`);
 
   for (let i = 0; i < chars.length; i++) {
     const char = chars[i];
     if (targetTotal > 0 && usersMap.size >= targetTotal) {
-      console.log(`[InSnitch] Meta total de 100% atingida na letra "${char}" (${usersMap.size}/${targetTotal})!`);
+      console.log(`[InSnitch] Meta atingida com sucesso na letra "${char}" (${usersMap.size}/${targetTotal})!`);
       break;
     }
 
     let maxId = null;
-    // Query up to 3 pages per letter (~150 users per letter)
     for (let page = 0; page < 3; page++) {
       if (targetTotal > 0 && usersMap.size >= targetTotal) break;
 
-      let url = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?query=${encodeURIComponent(char)}&count=50`;
+      let url = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?search_surface=follow_list_page&query=${encodeURIComponent(char)}&count=50`;
       if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
 
       let pageUsers = [];
       let nextCursor = null;
 
       try {
-        let res = await fetch(url, {
-          headers: { ...headers, 'User-Agent': navigator.userAgent },
-          credentials: 'include'
-        });
+        let res = await fetch(url, { headers, credentials: 'include' });
+        if (!res.ok) {
+          let altUrl = `/api/v1/friendships/${userId}/${type}/?query=${encodeURIComponent(char)}&count=50`;
+          if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
+          res = await fetch(altUrl, { headers, credentials: 'include' });
+        }
 
         if (res.status === 429) {
-          console.warn(`[InSnitch] Rate-limit (429) na busca da letra "${char}". Aguardando 3s...`);
-          if (onProgress) {
-            onProgress(type, usersMap.size, targetTotal, `Pausa anti-bloqueio na letra "${char.toUpperCase()}" (3s)...`);
-          }
-          await new Promise(r => setTimeout(r, 3000));
+          console.warn(`[InSnitch] Rate-limit na letra "${char}". Aguardando 2.5s...`);
+          await new Promise(r => setTimeout(r, 2500));
           continue;
         }
 
