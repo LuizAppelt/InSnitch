@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - High Performance Direct In-Page Collector
+// InSnitch Content Script - High Performance Direct In-Page Collector
 console.log("[InSnitch] Content script carregado.");
 
 // 1. Helpers for Cookies & Headers
@@ -194,11 +194,19 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   let maxId = null;
   const headers = getIgHeaders();
 
+  console.log(`[InSnitch] Iniciando coleta de ${type} para ID: ${userId} (Esperado: ${expectedTotal})...`);
+
   for (let page = 0; page < 250; page++) {
     if (users.length >= maxLimit) break;
 
+    // Build URL with search_surface for followers
     let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
-    if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
+    if (type === "followers") {
+      url += `&search_surface=follow_list_page`;
+    }
+    if (maxId) {
+      url += `&max_id=${encodeURIComponent(maxId)}`;
+    }
 
     let pageUsers = [];
     let nextCursor = null;
@@ -220,6 +228,16 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
           continue;
         }
 
+        // If first URL format failed, try fallback format without search_surface
+        if (!res.ok) {
+          let altUrl = `/api/v1/friendships/${userId}/${type}/?count=50`;
+          if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
+          res = await fetch(altUrl, {
+            headers: { ...headers, 'User-Agent': navigator.userAgent },
+            credentials: 'include'
+          });
+        }
+
         if (res.ok) {
           const data = await res.json();
           pageUsers = data.users || [];
@@ -227,7 +245,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
           success = true;
           break;
         } else {
-          console.warn(`[InSnitch] Resposta ${res.status} ao coletar ${type}, tentativa ${attempt}/3`);
+          console.warn(`[InSnitch] Erro ${res.status} ao coletar ${type} (tentativa ${attempt}/3)`);
           await new Promise(r => setTimeout(r, 1500));
         }
       } catch (err) {
@@ -236,7 +254,10 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
       }
     }
 
-    if (!success || pageUsers.length === 0) break;
+    if (!success || pageUsers.length === 0) {
+      console.log(`[InSnitch] Fim da paginação de ${type}. Total coletado: ${users.length}`);
+      break;
+    }
 
     for (const u of pageUsers) {
       const cleanName = (u.username || "").toLowerCase().trim();
