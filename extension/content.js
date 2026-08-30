@@ -1,5 +1,5 @@
-// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
-console.log("[InSnitch] Content script carregado com Suporte Alfabético A-Z.");
+﻿// InSnitch Content Script - High Performance Direct In-Page Collector
+console.log("[InSnitch] Content script carregado.");
 
 // 1. Helpers for Cookies & Headers
 function getCookie(name) {
@@ -21,7 +21,6 @@ function getCsrfToken() {
 function getIgHeaders() {
   const headers = {
     'x-ig-app-id': '936619743392459',
-    'x-asbd-id': '129477',
     'x-requested-with': 'XMLHttpRequest',
     'Accept': '*/*'
   };
@@ -184,7 +183,7 @@ async function extractProfileInfo(username) {
   return profile;
 }
 
-// 3. Fase 1: Fetch user list via standard cursor pagination
+// 3. Fetch user list via standard cursor pagination
 async function fetchUserList(userId, type = "followers", expectedTotal = 0, onProgress, options = {}) {
   const delayMs = options.delay || 650;
   const maxLimit = options.maxLimit || 10000;
@@ -198,7 +197,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   for (let page = 0; page < 250; page++) {
     if (users.length >= maxLimit) break;
 
-    let url = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
+    let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
     if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
 
     let pageUsers = [];
@@ -219,12 +218,6 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
           }
           await new Promise(r => setTimeout(r, waitTime));
           continue;
-        }
-
-        if (!res.ok) {
-          let altUrl = `/api/v1/friendships/${userId}/${type}/?count=50`;
-          if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
-          res = await fetch(altUrl, { headers, credentials: 'include' });
         }
 
         if (res.ok) {
@@ -272,94 +265,7 @@ async function fetchUserList(userId, type = "followers", expectedTotal = 0, onPr
   return users;
 }
 
-// 4. Fase 2: Varredura Alfabética A-Z (Alphabetical Partitioning)
-async function fetchAlphabeticalUsers(userId, type = "followers", usersMap, targetTotal = 0, onProgress, options = {}) {
-  const delayMs = Math.max(350, (options.delay || 650) - 200);
-  const chars = [
-    'a','b','c','d','e','f','g','h','i','j','k','l','m',
-    'n','o','p','q','r','s','t','u','v','w','x','y','z',
-    '0','1','2','3','4','5','6','7','8','9','_','.'
-  ];
-
-  const headers = getIgHeaders();
-  console.log(`[InSnitch] Iniciando Fase 2: Varredura Alfabética A-Z (${usersMap.size}/${targetTotal})...`);
-
-  for (let i = 0; i < chars.length; i++) {
-    const char = chars[i];
-    if (targetTotal > 0 && usersMap.size >= targetTotal) {
-      console.log(`[InSnitch] Meta atingida com sucesso na letra "${char}" (${usersMap.size}/${targetTotal})!`);
-      break;
-    }
-
-    let maxId = null;
-    for (let page = 0; page < 3; page++) {
-      if (targetTotal > 0 && usersMap.size >= targetTotal) break;
-
-      let url = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?search_surface=follow_list_page&query=${encodeURIComponent(char)}&count=50`;
-      if (maxId) url += `&max_id=${encodeURIComponent(maxId)}`;
-
-      let pageUsers = [];
-      let nextCursor = null;
-
-      try {
-        let res = await fetch(url, { headers, credentials: 'include' });
-        if (!res.ok) {
-          let altUrl = `/api/v1/friendships/${userId}/${type}/?query=${encodeURIComponent(char)}&count=50`;
-          if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
-          res = await fetch(altUrl, { headers, credentials: 'include' });
-        }
-
-        if (res.status === 429) {
-          console.warn(`[InSnitch] Rate-limit na letra "${char}". Aguardando 2.5s...`);
-          await new Promise(r => setTimeout(r, 2500));
-          continue;
-        }
-
-        if (res.ok) {
-          const data = await res.json();
-          pageUsers = data.users || [];
-          nextCursor = data.next_max_id;
-        }
-      } catch (err) {
-        console.warn(`[InSnitch] Erro na busca por "${char}":`, err);
-      }
-
-      if (pageUsers.length === 0) break;
-
-      let addedInPage = 0;
-      for (const u of pageUsers) {
-        const clean = (u.username || "").toLowerCase().trim();
-        if (clean && !usersMap.has(clean)) {
-          usersMap.set(clean, {
-            username: u.username,
-            full_name: u.full_name || "",
-            profile_pic_url: u.profile_pic_url || "",
-            is_verified: u.is_verified || false
-          });
-          addedInPage++;
-        }
-      }
-
-      if (onProgress) {
-        onProgress(
-          type, 
-          usersMap.size, 
-          targetTotal, 
-          `Fase 2: Pescando letra "${char.toUpperCase()}" (${usersMap.size}/${targetTotal} catalogados)...`
-        );
-      }
-
-      maxId = nextCursor;
-      if (!maxId || addedInPage === 0) break;
-
-      await new Promise(r => setTimeout(r, delayMs));
-    }
-
-    await new Promise(r => setTimeout(r, delayMs));
-  }
-}
-
-// 5. Floating On-Screen Progress Banner
+// 4. Floating On-Screen Progress Banner
 function updateFloatingBanner(message, percent = null, isDone = false, isError = false) {
   let banner = document.getElementById("insnitch-floating-banner");
   if (!banner) {
@@ -436,7 +342,7 @@ function updateFloatingBanner(message, percent = null, isDone = false, isError =
   }
 }
 
-// 6. Message Listener from Popup
+// 5. Message Listener from Popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "GET_CURRENT_PROFILE") {
     const username = getCurrentPageUsername();
@@ -449,18 +355,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       try {
         const username = request.username || getCurrentPageUsername();
         if (!username) {
-          sendResponse({ success: false, error: "Nenhum perfil identificado na aba ativa." });
+          chrome.runtime.sendMessage({ action: "SYNC_ERROR", error: "Nenhum perfil identificado na aba ativa." });
           return;
         }
 
-        updateFloatingBanner("Iniciando coleta completa de seguidores...", 0);
+        updateFloatingBanner("Iniciando coleta de dados...", 0);
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Obtendo dados do perfil..." });
         const profileInfo = await extractProfileInfo(username);
 
         if (!profileInfo.id) {
           updateFloatingBanner(`Não foi possível obter o ID de @${username}. Recarregue a página (F5).`, null, false, true);
-          sendResponse({ 
-            success: false, 
+          chrome.runtime.sendMessage({ 
+            action: "SYNC_ERROR", 
             error: `Não foi possível obter o ID de @${username}. Recarregue a aba do Instagram (F5) e tente novamente.` 
           });
           return;
@@ -469,68 +375,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const scanOptions = request.options || {};
         const expectedFollowers = profileInfo.followers_count || 0;
         const expectedFollowing = profileInfo.following_count || 0;
-        const followersMap = new Map();
 
-        // -------------------------------------------------------------
-        // FASE 1: Coleta Principal por Cursor de Seguidores
-        // -------------------------------------------------------------
-        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Fase 1: Coletando lista principal de seguidores..." });
-        updateFloatingBanner("Fase 1: Coletando lista principal de seguidores...", 10);
+        // 1. Coleta de Seguidores
+        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
+        updateFloatingBanner("Coletando lista de seguidores...", 15);
 
-        const phase1Followers = await fetchUserList(
+        const followers = await fetchUserList(
           profileInfo.id, 
           "followers", 
           expectedFollowers, 
           (type, count, total, extraMsg) => {
             const perc = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : null;
-            const msg = extraMsg || `Fase 1: Coletando seguidores: ${count}${total ? ` de ${total}` : ''}${perc ? ` (${perc}%)` : ''}...`;
+            const msg = extraMsg || `Coletando seguidores: ${count}${total ? ` de ${total}` : ''}${perc ? ` (${perc}%)` : ''}...`;
             chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
             updateFloatingBanner(msg, perc);
           }, 
           scanOptions
         );
 
-        for (const u of phase1Followers) {
-          const clean = (u.username || "").toLowerCase().trim();
-          if (clean) followersMap.set(clean, u);
-        }
-
-        console.log(`[InSnitch] Fase 1 finalizada: ${followersMap.size}/${expectedFollowers} seguidores catalogados.`);
-
-        // -------------------------------------------------------------
-        // FASE 2: Varredura Alfabética A-Z (se ainda faltar seguidores)
-        // -------------------------------------------------------------
-        if (expectedFollowers > 100 && followersMap.size < expectedFollowers) {
-          const remaining = expectedFollowers - followersMap.size;
-          console.log(`[InSnitch] Ativando Fase 2 (A-Z) para pescar ${remaining} seguidores restantes...`);
-          
-          chrome.runtime.sendMessage({ 
-            action: "UPDATE_STATUS", 
-            message: `Fase 2: Pescando ${remaining} seguidores restantes por ordem alfabética (A-Z)...` 
-          });
-          updateFloatingBanner(`Fase 2: Pescando ${remaining} seguidores restantes por ordem alfabética (A-Z)...`, Math.round((followersMap.size / expectedFollowers) * 100));
-
-          await fetchAlphabeticalUsers(
-            profileInfo.id,
-            "followers",
-            followersMap,
-            expectedFollowers,
-            (type, count, total, msg) => {
-              const perc = total > 0 ? Math.min(100, Math.round((count / total) * 100)) : null;
-              chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
-              updateFloatingBanner(msg, perc);
-            },
-            scanOptions
-          );
-        }
-
-        // -------------------------------------------------------------
-        // FASE 3: Coleta de Seguidos (Following)
-        // -------------------------------------------------------------
+        // 2. Coleta de Seguidos (Following)
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
-        updateFloatingBanner("Coletando lista de quem o perfil segue...", 90);
+        updateFloatingBanner("Coletando lista de quem o perfil segue...", 80);
 
-        const followingList = await fetchUserList(
+        const following = await fetchUserList(
           profileInfo.id, 
           "following", 
           expectedFollowing, 
@@ -543,10 +410,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           scanOptions
         );
 
-        const followersList = Array.from(followersMap.values());
-
         // Safeguards
-        if (profileInfo.is_private && followersList.length === 0 && profileInfo.followers_count > 0) {
+        if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {
           updateFloatingBanner(`Perfil privado restrito pelo Instagram.`, null, false, true);
           chrome.runtime.sendMessage({ 
             action: "SYNC_ERROR", 
@@ -555,7 +420,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
-        if (profileInfo.followers_count > 10 && followersList.length === 0) {
+        if (profileInfo.followers_count > 10 && followers.length === 0) {
           updateFloatingBanner(`Instagram não retornou seguidores.`, null, false, true);
           chrome.runtime.sendMessage({ 
             action: "SYNC_ERROR", 
@@ -573,18 +438,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             is_verified: profileInfo.is_verified,
             is_private: profileInfo.is_private,
             posts_count: profileInfo.posts_count,
-            followers_count: profileInfo.followers_count || followersList.length,
-            following_count: profileInfo.following_count || followingList.length
+            followers_count: profileInfo.followers_count || followers.length,
+            following_count: profileInfo.following_count || following.length
           },
-          followers: followersList,
-          following: followingList,
-          followers_count: profileInfo.followers_count || followersList.length,
-          following_count: profileInfo.following_count || followingList.length,
+          followers: followers,
+          following: following,
+          followers_count: profileInfo.followers_count || followers.length,
+          following_count: profileInfo.following_count || following.length,
           posts_count: profileInfo.posts_count
         };
 
         // Post directly to local backend
-        updateFloatingBanner("Enviando dados consolidados para o Dashboard local...", 100);
+        updateFloatingBanner("Gravando dados no InSnitch Dashboard...", 100);
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Enviando dados para o InSnitch..." });
 
         try {
@@ -600,7 +465,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
 
           const importResult = await backendRes.json();
-          updateFloatingBanner(`✓ Sincronização Concluída! ${followersList.length} seguidores salvos!`, 100, true);
+          updateFloatingBanner(`✓ Sincronização Concluída! ${followers.length} seguidores salvos!`, 100, true);
           chrome.runtime.sendMessage({ action: "SYNC_COMPLETE", result: importResult });
         } catch (postErr) {
           updateFloatingBanner(`Erro ao salvar no Dashboard: ${postErr.message}`, null, false, true);
