@@ -80,7 +80,10 @@ async function extractProfileInfo(username) {
 }
 
 // Fetch user list (followers or following) with pagination & deduplication
-async function fetchUserList(userId, type = "followers", onProgress) {
+async function fetchUserList(userId, type = "followers", onProgress, options = {}) {
+  const delayMs = options.delay || 750;
+  const maxLimit = options.maxLimit || 10000;
+
   const users = [];
   const seenUsernames = new Set();
   const seenMaxIds = new Set();
@@ -95,84 +98,97 @@ async function fetchUserList(userId, type = "followers", onProgress) {
     'Accept': '*/*'
   };
 
-  // Up to 200 pages (~10,000 users)
-  for (let page = 0; page < 200; page++) {
-    // Standard Instagram Web endpoint
+  // Up to 250 pages (~12,500 users)
+  for (let page = 0; page < 250; page++) {
+    if (users.length >= maxLimit) {
+      console.log(`[InSnitch] Limite máximo atingido (${maxLimit} usuários) para ${type}`);
+      break;
+    }
+
     let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
     if (maxId) {
       url += `&max_id=${encodeURIComponent(maxId)}`;
     }
 
-    try {
-      let res = await fetch(url, {
-        headers: {
-          ...headers,
-          'User-Agent': navigator.userAgent
-        },
-        credentials: 'include'
-      });
+    let pageUsers = [];
+    let nextCursor = null;
+    let success = false;
 
-      // Retry once on rate limit / 429
-      if (res.status === 429) {
-        console.warn(`[InSnitch] Rate-limit detectado ao coletar ${type}, aguardando 2.5s...`);
-        await new Promise(r => setTimeout(r, 2500));
-        res = await fetch(url, {
-          headers: { ...headers, 'User-Agent': navigator.userAgent },
+    // Retry loop (up to 3 attempts per page on rate-limit / network hiccup)
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        let res = await fetch(url, {
+          headers: {
+            ...headers,
+            'User-Agent': navigator.userAgent
+          },
           credentials: 'include'
         });
+
+        if (res.status === 429) {
+          const waitTime = attempt * 3000;
+          console.warn(`[InSnitch] Rate-limit (429) em ${type}, aguardando ${waitTime/1000}s (tentativa ${attempt}/3)...`);
+          if (onProgress) {
+            onProgress(type, users.length, `Aguardando pausa anti-bloqueio (${waitTime/1000}s)...`);
+          }
+          await new Promise(r => setTimeout(r, waitTime));
+          continue;
+        }
+
+        if (!res.ok) {
+          let altUrl = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
+          if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
+          res = await fetch(altUrl, {
+            headers: { ...headers, 'User-Agent': navigator.userAgent },
+            credentials: 'include'
+          });
+        }
+
+        if (res.ok) {
+          const data = await res.json();
+          pageUsers = data.users || [];
+          nextCursor = data.next_max_id;
+          success = true;
+          break;
+        } else {
+          console.warn(`[InSnitch] Status ${res.status} ao coletar ${type}, tentativa ${attempt}/3`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      } catch (err) {
+        console.warn(`[InSnitch] Erro de rede ao coletar ${type}:`, err);
+        await new Promise(r => setTimeout(r, 2000));
       }
+    }
 
-      // If relative URL failed, try absolute URL
-      if (!res.ok && res.status !== 429) {
-        let altUrl = `https://www.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
-        if (maxId) altUrl += `&max_id=${encodeURIComponent(maxId)}`;
-        res = await fetch(altUrl, {
-          headers: { ...headers, 'User-Agent': navigator.userAgent },
-          credentials: 'include'
-        });
-      }
-
-      let pageUsers = [];
-      let nextCursor = null;
-
-      if (res.ok) {
-        const data = await res.json();
-        pageUsers = data.users || [];
-        nextCursor = data.next_max_id;
-      } else {
-        console.warn(`[InSnitch] Status ${res.status} ao coletar ${type} para user ${userId}`);
-        break;
-      }
-
-      for (const u of pageUsers) {
-        const cleanName = (u.username || "").toLowerCase().trim();
-        if (!cleanName || seenUsernames.has(cleanName)) continue;
-        seenUsernames.add(cleanName);
-
-        users.push({
-          username: u.username,
-          full_name: u.full_name || "",
-          profile_pic_url: u.profile_pic_url || "",
-          is_verified: u.is_verified || false
-        });
-      }
-
-      if (onProgress) {
-        onProgress(type, users.length);
-      }
-
-      maxId = nextCursor;
-      if (!maxId || seenMaxIds.has(maxId) || pageUsers.length === 0) {
-        break;
-      }
-      seenMaxIds.add(maxId);
-
-      // Delay between pages to respect Instagram limits
-      await new Promise(r => setTimeout(r, 300));
-    } catch (err) {
-      console.error(`[InSnitch] Erro ao paginar ${type}:`, err);
+    if (!success || pageUsers.length === 0) {
       break;
     }
+
+    for (const u of pageUsers) {
+      const cleanName = (u.username || "").toLowerCase().trim();
+      if (!cleanName || seenUsernames.has(cleanName)) continue;
+      seenUsernames.add(cleanName);
+
+      users.push({
+        username: u.username,
+        full_name: u.full_name || "",
+        profile_pic_url: u.profile_pic_url || "",
+        is_verified: u.is_verified || false
+      });
+    }
+
+    if (onProgress) {
+      onProgress(type, users.length);
+    }
+
+    maxId = nextCursor;
+    if (!maxId || seenMaxIds.has(maxId)) {
+      break;
+    }
+    seenMaxIds.add(maxId);
+
+    // Adaptive delay between pages
+    await new Promise(r => setTimeout(r, delayMs));
   }
 
   return users;
@@ -222,17 +238,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
+        const scanOptions = request.options || {};
+        const expectedFollowers = profileInfo.followers_count || 0;
+        const expectedFollowing = profileInfo.following_count || 0;
+
         // 2. Fetch Followers
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
-        const followers = await fetchUserList(targetId, "followers", (type, count) => {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguidores: ${count}...` });
-        });
+        const followers = await fetchUserList(targetId, "followers", (type, count, extraMsg) => {
+          const perc = expectedFollowers > 0 ? ` (${Math.min(100, Math.round((count / expectedFollowers) * 100))}%)` : '';
+          const msg = extraMsg || `Coletando seguidores: ${count}${expectedFollowers ? ` de ${expectedFollowers}` : ''}${perc}...`;
+          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
+        }, scanOptions);
 
         // 3. Fetch Following
         chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
-        const following = await fetchUserList(targetId, "following", (type, count) => {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguindo: ${count}...` });
-        });
+        const following = await fetchUserList(targetId, "following", (type, count, extraMsg) => {
+          const perc = expectedFollowing > 0 ? ` (${Math.min(100, Math.round((count / expectedFollowing) * 100))}%)` : '';
+          const msg = extraMsg || `Coletando seguindo: ${count}${expectedFollowing ? ` de ${expectedFollowing}` : ''}${perc}...`;
+          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: msg });
+        }, scanOptions);
 
         // Safeguard: Check for private accounts / empty lists on non-empty profiles
         if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {

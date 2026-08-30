@@ -84,6 +84,36 @@ chrome.runtime.onMessage.addListener((msg) => {
 function setupEventListeners() {
   const btnSync = document.getElementById("btn-sync");
   const btnOpenDashboard = document.getElementById("btn-open-dashboard");
+  const btnToggleOptions = document.getElementById("btn-toggle-options");
+  const optionsPanel = document.getElementById("options-panel");
+  const optionsArrow = document.getElementById("options-arrow");
+  const selectMode = document.getElementById("select-scan-mode");
+  const selectLimit = document.getElementById("select-scan-limit");
+
+  // Load saved options
+  const savedMode = localStorage.getItem("insnitch_scan_mode") || "safe";
+  const savedLimit = localStorage.getItem("insnitch_scan_limit") || "3000";
+  if (selectMode) selectMode.value = savedMode;
+  if (selectLimit) selectLimit.value = savedLimit;
+
+  if (selectMode) {
+    selectMode.addEventListener("change", () => {
+      localStorage.setItem("insnitch_scan_mode", selectMode.value);
+    });
+  }
+
+  if (selectLimit) {
+    selectLimit.addEventListener("change", () => {
+      localStorage.setItem("insnitch_scan_limit", selectLimit.value);
+    });
+  }
+
+  if (btnToggleOptions && optionsPanel) {
+    btnToggleOptions.addEventListener("click", () => {
+      const isHidden = optionsPanel.classList.toggle("hidden");
+      if (optionsArrow) optionsArrow.innerText = isHidden ? "▸" : "▾";
+    });
+  }
 
   btnSync.addEventListener("click", async () => {
     if (!currentDetectedUsername || !currentTabId) return;
@@ -100,11 +130,20 @@ function setupEventListeners() {
     btnSync.disabled = true;
     progressText.innerText = "Iniciando coleta na aba ativa...";
 
+    // Determine delay and limit from options
+    const mode = selectMode ? selectMode.value : "safe";
+    const limit = selectLimit ? parseInt(selectLimit.value) : 3000;
+    const delay = mode === "fast" ? 350 : 750;
+
     try {
-      // Send message to content script in active tab
+      // Send message to content script in active tab with options
       chrome.tabs.sendMessage(
         currentTabId,
-        { action: "EXTRACT_ALL_DATA", username: currentDetectedUsername },
+        { 
+          action: "EXTRACT_ALL_DATA", 
+          username: currentDetectedUsername,
+          options: { delay, maxLimit: limit }
+        },
         async (response) => {
           if (chrome.runtime.lastError) {
             progressBox.classList.add("hidden");
