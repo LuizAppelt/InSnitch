@@ -686,14 +686,14 @@
           <i data-lucide="settings" class="w-5 h-5 text-ig-primary"></i>
           <span>Configurações & Chaves</span>
         </div>
-        <button onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button onclick="closeSettingsModal()" aria-label="Fechar configurações" class="text-ig-grayText hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
       <div class="flex flex-col gap-4 text-xs">
         <div>
-          <label class="font-semibold block mb-1">Google Gemini API Key (IA):</label>
+          <label for="setting-gemini-key" class="font-semibold block mb-1">Google Gemini API Key (IA):</label>
           <input 
             type="password" 
             id="setting-gemini-key" 
@@ -704,7 +704,7 @@
         </div>
 
         <div>
-          <label class="font-semibold block mb-1">Cookie de Sessão do Instagram (sessionid):</label>
+          <label for="setting-session-cookie" class="font-semibold block mb-1">Cookie de Sessão do Instagram (sessionid):</label>
           <input 
             type="password" 
             id="setting-session-cookie" 
@@ -715,7 +715,7 @@
         </div>
 
         <div class="flex items-center justify-between pt-2">
-          <label class="font-semibold">Modo Padrão:</label>
+          <label for="setting-default-mode" class="font-semibold">Modo Padrão:</label>
           <select id="setting-default-mode" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-lg px-2.5 py-1.5">
             <option value="true">Simulação / Demonstração (Recomendado)</option>
             <option value="false">Conexão Real Instagram</option>
@@ -742,7 +742,7 @@
           <i data-lucide="puzzle" class="w-5 h-5 text-emerald-500"></i>
           <span>Extensão InSnitch (Chrome / Edge)</span>
         </div>
-        <button onclick="closeExtensionModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button onclick="closeExtensionModal()" aria-label="Fechar extensão" class="text-ig-grayText hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
