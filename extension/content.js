@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
+// InSnitch Content Script - Smart Direct Collector with Alphabetical Partitioning
 console.log("[InSnitch] Content script carregado com Suporte Alfabético A-Z.");
 
 // 1. Helpers for Cookies & Headers
@@ -500,7 +500,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // -------------------------------------------------------------
         // FASE 2: Varredura Alfabética A-Z (se ainda faltar seguidores)
         // -------------------------------------------------------------
-        if (expectedFollowers > 1000 && followersMap.size < expectedFollowers) {
+        if (expectedFollowers > 100 && followersMap.size < expectedFollowers) {
           const remaining = expectedFollowers - followersMap.size;
           console.log(`[InSnitch] Ativando Fase 2 (A-Z) para pescar ${remaining} seguidores restantes...`);
           
@@ -548,8 +548,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Safeguards
         if (profileInfo.is_private && followersList.length === 0 && profileInfo.followers_count > 0) {
           updateFloatingBanner(`Perfil privado restrito pelo Instagram.`, null, false, true);
-          sendResponse({ 
-            success: false, 
+          chrome.runtime.sendMessage({ 
+            action: "SYNC_ERROR", 
             error: `Este perfil é privado (@${profileInfo.username}) e o Instagram restringe a lista de seguidores para quem não o segue.` 
           });
           return;
@@ -557,8 +557,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         if (profileInfo.followers_count > 10 && followersList.length === 0) {
           updateFloatingBanner(`Instagram não retornou seguidores.`, null, false, true);
-          sendResponse({ 
-            success: false, 
+          chrome.runtime.sendMessage({ 
+            action: "SYNC_ERROR", 
             error: `O Instagram não retornou a lista de seguidores. Aguarde alguns segundos e tente novamente.` 
           });
           return;
@@ -583,15 +583,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           posts_count: profileInfo.posts_count
         };
 
-        updateFloatingBanner(`✓ Coleta Concluída! ${followersList.length} seguidores salvos!`, 100, true);
-        sendResponse({ success: true, data: packageData });
+        // Post directly to local backend
+        updateFloatingBanner("Enviando dados consolidados para o Dashboard local...", 100);
+        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Enviando dados para o InSnitch..." });
+
+        try {
+          const backendRes = await fetch("http://127.0.0.1:8000/api/extension/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(packageData)
+          });
+
+          if (!backendRes.ok) {
+            const errData = await backendRes.json();
+            throw new Error(errData.detail || "Falha ao gravar no dashboard.");
+          }
+
+          const importResult = await backendRes.json();
+          updateFloatingBanner(`✓ Sincronização Concluída! ${followersList.length} seguidores salvos!`, 100, true);
+          chrome.runtime.sendMessage({ action: "SYNC_COMPLETE", result: importResult });
+        } catch (postErr) {
+          updateFloatingBanner(`Erro ao salvar no Dashboard: ${postErr.message}`, null, false, true);
+          chrome.runtime.sendMessage({ action: "SYNC_ERROR", error: postErr.message });
+        }
 
       } catch (err) {
         console.error("[InSnitch] Erro na extração:", err);
         updateFloatingBanner(`Erro: ${err.message}`, null, false, true);
-        sendResponse({ success: false, error: err.message });
+        chrome.runtime.sendMessage({ action: "SYNC_ERROR", error: err.message });
       }
     })();
-    return true; // Keep message channel open for async response
+    sendResponse({ success: true, started: true });
+    return true;
   }
 });
