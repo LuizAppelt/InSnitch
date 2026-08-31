@@ -1,23 +1,10 @@
-// InSnitch Content Script - Runs inside Instagram Web tab
+﻿// InSnitch Content Script - Runs inside Instagram Web tab
 console.log("[InSnitch] Content script ativo na aba do Instagram.");
 
 // Helper to get cookie by name in browser context
 function getCookie(name) {
   const match = document.cookie.match(new RegExp('(^|;\\s*)(' + name + ')=([^;]*)'));
   return match ? decodeURIComponent(match[3]) : '';
-}
-
-function getCsrfToken() {
-  const cookieCsrf = getCookie('csrftoken') || getCookie('csrf_token') || '';
-  if (cookieCsrf) return cookieCsrf;
-
-  try {
-    const html = document.documentElement.innerHTML;
-    const m = html.match(/"csrf_token":"([^"]+)"/) || html.match(/csrf_token=([a-zA-Z0-9_-]+)/);
-    if (m && m[1]) return m[1];
-  } catch (e) {}
-
-  return '';
 }
 
 // Extract current username from URL pathname
@@ -33,7 +20,7 @@ function getCurrentPageUsername() {
 async function extractProfileInfo(username) {
   // Try fetching via internal endpoint with browser cookies
   try {
-    const csrf = getCsrfToken();
+    const csrf = getCookie('csrftoken') || '';
     const headers = {
       'x-ig-app-id': '936619743392459',
       'x-asbd-id': '129477',
@@ -94,13 +81,12 @@ async function extractProfileInfo(username) {
   };
 }
 
-// Fetch user list (followers or following) with pagination & deduplication
+// Fetch user list (followers or following) with pagination
 async function fetchUserList(userId, type = "followers", onProgress) {
   const users = [];
-  const seenUsernames = new Set();
-  const seenMaxIds = new Set();
+  const seen = new Set();
   let maxId = null;
-  const csrf = getCsrfToken();
+  const csrf = getCookie('csrftoken') || '';
 
   const headers = {
     'x-ig-app-id': '936619743392459',
@@ -112,10 +98,8 @@ async function fetchUserList(userId, type = "followers", onProgress) {
 
   // Up to 200 pages (~10,000 users)
   for (let page = 0; page < 200; page++) {
-    let url = type === "followers" 
-      ? `/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page`
-      : `/api/v1/friendships/${userId}/following/?count=50`;
-
+    // Direct i.instagram.com API endpoint
+    let url = `https://i.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
     if (maxId) {
       url += `&max_id=${encodeURIComponent(maxId)}`;
     }
@@ -129,75 +113,28 @@ async function fetchUserList(userId, type = "followers", onProgress) {
         credentials: 'include'
       });
 
-      // Retry once on rate limit / 429
-      if (res.status === 429) {
-        console.warn(`[InSnitch] Rate-limit detectado ao coletar ${type}, aguardando 2s...`);
-        await new Promise(r => setTimeout(r, 2000));
-        res = await fetch(url, {
+      // Fallback to relative endpoint if i.instagram.com is blocked
+      if (!res.ok) {
+        let relUrl = `/api/v1/friendships/${userId}/${type}/?count=50`;
+        if (maxId) relUrl += `&max_id=${encodeURIComponent(maxId)}`;
+        res = await fetch(relUrl, {
           headers: { ...headers, 'User-Agent': navigator.userAgent },
           credentials: 'include'
         });
       }
 
-      let pageUsers = [];
-      let nextCursor = null;
-
-      if (res.ok) {
-        const text = await res.text();
-        console.log(`[InSnitch] Resposta REST ${type} (página ${page + 1}):`, text.substring(0, 100));
-        if (text.startsWith("{")) {
-          const data = JSON.parse(text);
-          pageUsers = data.users || [];
-          nextCursor = data.next_max_id;
-        }
+      if (!res.ok) {
+        console.warn(`[InSnitch] Status ${res.status} ao coletar ${type}`);
+        break;
       }
 
-      // Rota Alternativa 1: REST sem search_surface se retornou vazio
-      if (pageUsers.length === 0 && type === "followers") {
-        const altUrl = `/api/v1/friendships/${userId}/followers/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`;
-        const altRes = await fetch(altUrl, { headers, credentials: 'include' });
-        if (altRes.ok) {
-          const altText = await altRes.text();
-          if (altText.startsWith("{")) {
-            const altData = JSON.parse(altText);
-            pageUsers = altData.users || [];
-            nextCursor = altData.next_max_id;
-          }
-        }
-      }
-
-      // Rota Alternativa 2: GraphQL Nativo
-      if (pageUsers.length === 0 && !nextCursor) {
-        console.warn(`[InSnitch] REST não retornou dados (${res.status}), usando GraphQL para ${type}...`);
-        const queryHash = type === "followers" ? "58712303d941c6855d4e888c5f0cd22f" : "37479f2b8209594dde7ffb0d41ac5177";
-        const varsObj = { id: userId, first: 50 };
-        if (maxId) varsObj.after = maxId;
-        const variables = JSON.stringify(varsObj);
-        const gqlUrl = `/graphql/query/?query_hash=${queryHash}&variables=${encodeURIComponent(variables)}`;
-        
-        const gqlRes = await fetch(gqlUrl, { headers, credentials: 'include' });
-        if (gqlRes.ok) {
-          const gqlText = await gqlRes.text();
-          console.log(`[InSnitch] Resposta GraphQL ${type}:`, gqlText.substring(0, 100));
-          if (gqlText.startsWith("{")) {
-            const gqlData = JSON.parse(gqlText);
-            const edge = type === "followers" ? gqlData?.data?.user?.edge_followed_by : gqlData?.data?.user?.edge_follow;
-            const edges = edge?.edges || [];
-            pageUsers = edges.map(e => ({
-              username: e.node?.username,
-              full_name: e.node?.full_name || "",
-              profile_pic_url: e.node?.profile_pic_url || "",
-              is_verified: e.node?.is_verified || false
-            }));
-            nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
-          }
-        }
-      }
+      const data = await res.json();
+      const pageUsers = data.users || [];
 
       for (const u of pageUsers) {
-        const cleanName = (u.username || "").toLowerCase().trim();
-        if (!cleanName || seenUsernames.has(cleanName)) continue;
-        seenUsernames.add(cleanName);
+        const clean = (u.username || "").toLowerCase().trim();
+        if (!clean || seen.has(clean)) continue;
+        seen.add(clean);
 
         users.push({
           username: u.username,
@@ -207,19 +144,17 @@ async function fetchUserList(userId, type = "followers", onProgress) {
         });
       }
 
-      maxId = nextCursor;
-
       if (onProgress) {
         onProgress(type, users.length);
       }
 
-      if (!maxId || seenMaxIds.has(maxId) || pageUsers.length === 0) {
+      maxId = data.next_max_id;
+      if (!maxId || pageUsers.length === 0) {
         break;
       }
-      seenMaxIds.add(maxId);
 
-      // Delay between pages to respect Instagram limits
-      await new Promise(r => setTimeout(r, 350));
+      // Small delay between pages
+      await new Promise(r => setTimeout(r, 300));
     } catch (err) {
       console.error(`[InSnitch] Erro ao paginar ${type}:`, err);
       break;
@@ -253,23 +188,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // If user ID was not found, search for it
         let targetId = profileInfo.id;
         if (!targetId) {
-          const searchRes = await fetch(`/api/v1/users/search/?q=${encodeURIComponent(username)}`, {
-            credentials: 'include',
-            headers: { 'x-ig-app-id': '936619743392459' }
-          });
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            const match = (searchData.users || []).find(u => u.username.toLowerCase() === username.toLowerCase());
-            if (match) {
-              targetId = match.pk || match.pk_id || match.id;
-              if (!profileInfo.profile_pic_url) profileInfo.profile_pic_url = match.profile_pic_url;
-              if (!profileInfo.full_name) profileInfo.full_name = match.full_name;
+          try {
+            const searchRes = await fetch(`https://i.instagram.com/api/v1/users/search/?q=${encodeURIComponent(username)}`, {
+              credentials: 'include',
+              headers: { 'x-ig-app-id': '936619743392459' }
+            });
+            if (searchRes.ok) {
+              const searchData = await searchRes.json();
+              const match = (searchData.users || []).find(u => u.username.toLowerCase() === username.toLowerCase());
+              if (match) {
+                targetId = match.pk || match.pk_id || match.id;
+                if (!profileInfo.profile_pic_url) profileInfo.profile_pic_url = match.profile_pic_url;
+                if (!profileInfo.full_name) profileInfo.full_name = match.full_name;
+              }
             }
-          }
+          } catch (e) {}
         }
 
         if (!targetId) {
-          sendResponse({ success: false, error: "Não foi possível resolver o ID deste perfil. Recarregue a aba (F5) e tente novamente." });
+          sendResponse({ success: false, error: "Não foi possível resolver o ID deste perfil. Recarregue a página (F5) e tente novamente." });
           return;
         }
 
@@ -299,7 +236,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         if (targetMode === "both" || targetMode === "following") {
           chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando quem o perfil segue..." });
           following = await fetchUserList(targetId, "following", (type, count) => {
-            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando quem segue: ${count}...` });
+            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando quem o perfil segue: ${count}...` });
           });
 
           if (profileInfo.following_count > 10 && following.length === 0) {
