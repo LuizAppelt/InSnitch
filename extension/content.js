@@ -7,6 +7,21 @@ function getCookie(name) {
   return match ? decodeURIComponent(match[3]) : '';
 }
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)(?:csrf_token|csrftoken)=([^;]+)/);
+  if (match && match[1]) return decodeURIComponent(match[1]);
+
+  try {
+    const html = document.documentElement.innerHTML;
+    const m = html.match(/"csrf_token":"([^"]+)"/) || 
+              html.match(/csrf_token=([a-zA-Z0-9_-]+)/) ||
+              html.match(/"token":"([a-zA-Z0-9_-]+)"/);
+    if (m && m[1]) return m[1];
+  } catch (e) {}
+
+  return '';
+}
+
 // Extract current username from URL pathname
 function getCurrentPageUsername() {
   const path = window.location.pathname.split('/').filter(Boolean);
@@ -19,11 +34,12 @@ function getCurrentPageUsername() {
 // Extract profile details from DOM or internal API
 async function extractProfileInfo(username) {
   try {
-    const csrf = getCookie('csrftoken') || '';
+    const csrf = getCsrfToken();
     const headers = {
       'x-ig-app-id': '936619743392459',
       'x-asbd-id': '129477',
       'x-requested-with': 'XMLHttpRequest',
+      'x-ig-www-claim': '0',
       'Accept': '*/*'
     };
     if (csrf) headers['x-csrftoken'] = csrf;
@@ -82,6 +98,19 @@ async function extractProfileInfo(username) {
 
 // Smart Multi-Route Cascade Fetcher for Single Page
 async function fetchPageWithCascade(userId, type, maxId, headers) {
+  const followerHashes = [
+    "58712303d941c6855d4e888c5f0cd22f",
+    "5a25c191486c0d78788373a41b392d44",
+    "c76146de99bb02f6415203be841dd25a",
+    "d54e0811ab46723cdd590bd265160295"
+  ];
+  const followingHashes = [
+    "37479f2b8209594dde7ffb0d41ac5177",
+    "d04b0a864b4b54b84c0d8294d7dda58d"
+  ];
+
+  const candidateHashes = type === "followers" ? followerHashes : followingHashes;
+
   const routes = [
     {
       name: "Rota 1 (REST Oficial com Superfície de Busca)",
@@ -89,26 +118,29 @@ async function fetchPageWithCascade(userId, type, maxId, headers) {
       kind: "rest"
     },
     {
-      name: "Rota 2 (REST Nativa i.instagram.com)",
-      url: `https://i.instagram.com/api/v1/friendships/${userId}/${type}/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`,
-      kind: "rest"
-    },
-    {
-      name: "Rota 3 (REST Pura Direta)",
+      name: "Rota 2 (REST Pura Direta)",
       url: `/api/v1/friendships/${userId}/${type}/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`,
       kind: "rest"
     },
     {
-      name: "Rota 4 (GraphQL Nativo do Instagram Web)",
-      url: (() => {
-        const queryHash = type === "followers" ? "58712303d941c6855d4e888c5f0cd22f" : "37479f2b8209594dde7ffb0d41ac5177";
-        const varsObj = { id: userId, first: 50 };
-        if (maxId) varsObj.after = maxId;
-        return `/graphql/query/?query_hash=${queryHash}&variables=${encodeURIComponent(JSON.stringify(varsObj))}`;
-      })(),
-      kind: "graphql"
+      name: "Rota 3 (REST Nativa i.instagram.com)",
+      url: `https://i.instagram.com/api/v1/friendships/${userId}/${type}/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`,
+      kind: "rest"
     }
   ];
+
+  // Add GraphQL routes for each hash
+  candidateHashes.forEach((hash, idx) => {
+    routes.push({
+      name: `Rota GraphQL ${idx + 1} (Hash: ${hash.substring(0, 6)}...)`,
+      url: (() => {
+        const varsObj = { id: userId, first: 50 };
+        if (maxId) varsObj.after = maxId;
+        return `/graphql/query/?query_hash=${hash}&variables=${encodeURIComponent(JSON.stringify(varsObj))}`;
+      })(),
+      kind: "graphql"
+    });
+  });
 
   for (const route of routes) {
     try {
@@ -140,7 +172,9 @@ async function fetchPageWithCascade(userId, type, maxId, headers) {
         pageUsers = data.users || [];
         nextCursor = data.next_max_id;
       } else if (route.kind === "graphql") {
-        const edge = type === "followers" ? data?.data?.user?.edge_followed_by : data?.data?.user?.edge_follow;
+        const edge = type === "followers" 
+          ? (data?.data?.user?.edge_followed_by || data?.data?.edge_followed_by)
+          : (data?.data?.user?.edge_follow || data?.data?.edge_follow);
         const edges = edge?.edges || [];
         pageUsers = edges.map(e => ({
           username: e.node?.username,
@@ -149,13 +183,17 @@ async function fetchPageWithCascade(userId, type, maxId, headers) {
           is_verified: e.node?.is_verified || false
         }));
         nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
+
+        if (data.errors) {
+          console.warn(`[InSnitch] ${route.name} erros:`, data.errors);
+        }
       }
 
       if (pageUsers.length > 0) {
         console.log(`[InSnitch] ✓ ${route.name} respondeu com sucesso! (${pageUsers.length} usuários obtidos)`);
         return { success: true, users: pageUsers, nextCursor: nextCursor };
       } else {
-        console.warn(`[InSnitch] ${route.name} retornou lista vazia de usuários.`);
+        console.warn(`[InSnitch] ${route.name} respondeu 200 mas sem usuários.`);
       }
     } catch (err) {
       console.warn(`[InSnitch] Erro ao tentar ${route.name}:`, err);
@@ -171,17 +209,18 @@ async function fetchUserList(userId, type = "followers", onProgress) {
   const seen = new Set();
   const seenCursors = new Set();
   let maxId = null;
-  const csrf = getCookie('csrftoken') || '';
+  const csrf = getCsrfToken();
 
   const headers = {
     'x-ig-app-id': '936619743392459',
     'x-asbd-id': '129477',
     'x-requested-with': 'XMLHttpRequest',
+    'x-ig-www-claim': '0',
     'Accept': '*/*'
   };
   if (csrf) headers['x-csrftoken'] = csrf;
 
-  console.log(`[InSnitch] Iniciando extração em cascata para ${type} (User ID: ${userId})...`);
+  console.log(`[InSnitch] Iniciando extração em cascata para ${type} (User ID: ${userId}, CSRF: ${csrf ? 'OK' : 'Ausente'})...`);
 
   // Up to 200 pages (~10,000 users)
   for (let page = 0; page < 200; page++) {
@@ -247,9 +286,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         let targetId = profileInfo.id;
         if (!targetId) {
           try {
-            const searchRes = await fetch(`https://i.instagram.com/api/v1/users/search/?q=${encodeURIComponent(username)}`, {
+            const csrf = getCsrfToken();
+            const searchHeaders = {
+              'x-ig-app-id': '936619743392459',
+              'x-requested-with': 'XMLHttpRequest',
+              'x-ig-www-claim': '0'
+            };
+            if (csrf) searchHeaders['x-csrftoken'] = csrf;
+
+            const searchRes = await fetch(`/api/v1/users/search/?q=${encodeURIComponent(username)}`, {
               credentials: 'include',
-              headers: { 'x-ig-app-id': '936619743392459' }
+              headers: searchHeaders
             });
             if (searchRes.ok) {
               const searchData = await searchRes.json();
