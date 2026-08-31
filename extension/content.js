@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - High Reliability Collector
+// InSnitch Content Script - High Reliability Collector
 console.log("[InSnitch] Content script carregado.");
 
 // Helper to get cookie
@@ -275,34 +275,50 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
-        console.log(`[InSnitch] Iniciando extração: @${profileInfo.username} (ID: ${profileInfo.id})`);
+        const targetMode = request.targetMode || "both";
+        let followers = [];
+        let following = [];
 
-        // 1. Coleta de Seguidores
-        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
-        const followers = await fetchUserList(profileInfo.id, "followers", (type, count) => {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguidores: ${count}...` });
-        });
+        console.log(`[InSnitch] Iniciando extração (@${profileInfo.username}, Modo: ${targetMode}, ID: ${profileInfo.id})`);
 
-        // 2. Coleta de Seguidos
-        chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
-        const following = await fetchUserList(profileInfo.id, "following", (type, count) => {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguindo: ${count}...` });
-        });
-
-        if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {
-          sendResponse({ 
-            success: false, 
-            error: `Este perfil é privado (@${profileInfo.username}) e o Instagram restringe a lista de seguidores para quem não o segue.` 
+        // 1. Coleta de Seguidores (se modo for 'both' ou 'followers')
+        if (targetMode === "both" || targetMode === "followers") {
+          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
+          followers = await fetchUserList(profileInfo.id, "followers", (type, count) => {
+            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguidores: ${count}...` });
           });
-          return;
+
+          if (profileInfo.is_private && followers.length === 0 && profileInfo.followers_count > 0) {
+            sendResponse({ 
+              success: false, 
+              error: `Este perfil é privado (@${profileInfo.username}) e o Instagram restringe a lista de seguidores para quem não o segue.` 
+            });
+            return;
+          }
+
+          if (profileInfo.followers_count > 10 && followers.length === 0) {
+            sendResponse({ 
+              success: false, 
+              error: `O Instagram não retornou a lista de seguidores (0 de ${profileInfo.followers_count}). Aguarde alguns segundos e tente novamente.` 
+            });
+            return;
+          }
         }
 
-        if (profileInfo.followers_count > 10 && followers.length === 0) {
-          sendResponse({ 
-            success: false, 
-            error: `O Instagram não retornou a lista de seguidores (0 de ${profileInfo.followers_count}). Aguarde alguns segundos e tente novamente.` 
+        // 2. Coleta de Seguidos (se modo for 'both' ou 'following')
+        if (targetMode === "both" || targetMode === "following") {
+          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
+          following = await fetchUserList(profileInfo.id, "following", (type, count) => {
+            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguindo: ${count}...` });
           });
-          return;
+
+          if (profileInfo.following_count > 10 && following.length === 0) {
+            sendResponse({ 
+              success: false, 
+              error: `O Instagram não retornou a lista de seguidos (0 de ${profileInfo.following_count}). Aguarde alguns segundos e tente novamente.` 
+            });
+            return;
+          }
         }
 
         const packageData = {
@@ -321,10 +337,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           following: following,
           followers_count: profileInfo.followers_count || followers.length,
           following_count: profileInfo.following_count || following.length,
-          posts_count: profileInfo.posts_count
+          posts_count: profileInfo.posts_count,
+          target_mode: targetMode
         };
 
-        console.log(`[InSnitch] Sucesso: ${followers.length} seguidores e ${following.length} seguidos.`);
+        console.log(`[InSnitch] Sucesso (${targetMode}): ${followers.length} seguidores e ${following.length} seguidos.`);
         sendResponse({ success: true, data: packageData });
 
       } catch (err) {

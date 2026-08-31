@@ -33,6 +33,22 @@
         <div id="tab-hint" class="hint">Abra um perfil no Instagram para sincronizar.</div>
       </div>
 
+      <!-- TARGET SELECTOR (AMBOS, SEGUIDOS, SEGUIDORES) -->
+      <div class="target-selector-container">
+        <label class="target-selector-label">O que sincronizar:</label>
+        <div class="target-selector-group" id="target-selector-group">
+          <button type="button" class="target-btn active" data-mode="both" title="Sincroniza seguidores e seguidos completos">
+            <span>🔄 Ambos</span>
+          </button>
+          <button type="button" class="target-btn" data-mode="following" title="Ideal para contas grandes: ultrarrápido (vê quem o perfil começou ou deixou de seguir)">
+            <span>➡️ Seguidos</span>
+          </button>
+          <button type="button" class="target-btn" data-mode="followers" title="Sincroniza apenas a lista de seguidores">
+            <span>👥 Seguidores</span>
+          </button>
+        </div>
+      </div>
+
       <!-- ACTION BUTTON -->
       <button id="btn-sync" class="btn-primary" disabled>
         <span id="btn-icon">⚡</span>

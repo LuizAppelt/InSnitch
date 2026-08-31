@@ -85,6 +85,7 @@ class ExtensionImportRequest(BaseModel):
     followers_count: Optional[int] = None
     following_count: Optional[int] = None
     posts_count: Optional[int] = None
+    target_mode: Optional[str] = "both"
 
 # Routes
 @app.get("/")
@@ -174,6 +175,8 @@ async def extension_import(req: ExtensionImportRequest):
     if not username:
         raise HTTPException(status_code=400, detail="Nome de usuário inválido na importação.")
 
+    target_mode = (req.target_mode or "both").lower().strip()
+
     profile_dict = {
         "username": username,
         "full_name": req.profile.full_name or "",
@@ -209,23 +212,73 @@ async def extension_import(req: ExtensionImportRequest):
         for g in req.following
     ]
 
-    # Safeguards against corrupted/incomplete imports
     expected_followers = req.followers_count or req.profile.followers_count or 0
     expected_following = req.following_count or req.profile.following_count or 0
 
-    if expected_followers > 10 and len(followers_list) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"A lista de seguidores retornou vazia (0 de {expected_followers}). O snapshot foi cancelado para proteger o histórico de dados."
-        )
-    if expected_following > 10 and len(following_list) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"A lista de seguidos retornou vazia (0 de {expected_following}). O snapshot foi cancelado para proteger o histórico de dados."
-        )
+    # Handling mode-specific list preservation
+    if target_mode == "following":
+        # User only scanned following list: preserve previous followers if available
+        if prev_snapshot_id:
+            prev_followers_raw = get_snapshot_users(prev_snapshot_id, user_type="follower")
+            followers_list = [
+                {
+                    "username": f["username"],
+                    "full_name": f.get("full_name", ""),
+                    "profile_pic_url": f.get("profile_pic_url", ""),
+                    "is_verified": bool(f.get("is_verified", False))
+                }
+                for f in prev_followers_raw
+            ]
+        followers_count = expected_followers or len(followers_list)
+        following_count = expected_following or len(following_list)
+        note = "Sincronizado apenas Seguidos via Extensão"
 
-    followers_count = expected_followers or len(followers_list)
-    following_count = expected_following or len(following_list)
+        if expected_following > 10 and len(following_list) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A lista de seguidos retornou vazia (0 de {expected_following}). O snapshot foi cancelado para proteger o histórico."
+            )
+
+    elif target_mode == "followers":
+        # User only scanned followers list: preserve previous following if available
+        if prev_snapshot_id:
+            prev_following_raw = get_snapshot_users(prev_snapshot_id, user_type="following")
+            following_list = [
+                {
+                    "username": g["username"],
+                    "full_name": g.get("full_name", ""),
+                    "profile_pic_url": g.get("profile_pic_url", ""),
+                    "is_verified": bool(g.get("is_verified", False))
+                }
+                for g in prev_following_raw
+            ]
+        followers_count = expected_followers or len(followers_list)
+        following_count = expected_following or len(following_list)
+        note = "Sincronizado apenas Seguidores via Extensão"
+
+        if expected_followers > 10 and len(followers_list) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A lista de seguidores retornou vazia (0 de {expected_followers}). O snapshot foi cancelado para proteger o histórico."
+            )
+
+    else:
+        # Full scan: both followers & following
+        followers_count = expected_followers or len(followers_list)
+        following_count = expected_following or len(following_list)
+        note = "Sincronizado via Extensão do Navegador"
+
+        if expected_followers > 10 and len(followers_list) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A lista de seguidores retornou vazia (0 de {expected_followers}). O snapshot foi cancelado para proteger o histórico de dados."
+            )
+        if expected_following > 10 and len(following_list) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A lista de seguidos retornou vazia (0 de {expected_following}). O snapshot foi cancelado para proteger o histórico de dados."
+            )
+
     posts_count = req.posts_count or req.profile.posts_count or 0
 
     new_snapshot_id = save_snapshot(
@@ -235,7 +288,7 @@ async def extension_import(req: ExtensionImportRequest):
         posts_count=posts_count,
         followers_list=followers_list,
         following_list=following_list,
-        note="Sincronizado via Extensão do Navegador"
+        note=note
     )
 
     diff_result = calculate_diff(new_snapshot_id, prev_snapshot_id)

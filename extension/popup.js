@@ -1,4 +1,4 @@
-﻿const BACKEND_URL = "http://127.0.0.1:8000";
+const BACKEND_URL = "http://127.0.0.1:8000";
 
 let currentDetectedUsername = null;
 let currentTabId = null;
@@ -84,6 +84,24 @@ chrome.runtime.onMessage.addListener((msg) => {
 function setupEventListeners() {
   const btnSync = document.getElementById("btn-sync");
   const btnOpenDashboard = document.getElementById("btn-open-dashboard");
+  const targetButtons = document.querySelectorAll(".target-btn");
+
+  // Load saved mode or default to 'both'
+  let currentTargetMode = localStorage.getItem("insnitch_target_mode") || "both";
+  targetButtons.forEach(btn => {
+    if (btn.dataset.mode === currentTargetMode) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+
+    btn.addEventListener("click", () => {
+      targetButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentTargetMode = btn.dataset.mode;
+      localStorage.setItem("insnitch_target_mode", currentTargetMode);
+    });
+  });
 
   btnSync.addEventListener("click", async () => {
     if (!currentDetectedUsername || !currentTabId) return;
@@ -105,7 +123,8 @@ function setupEventListeners() {
         currentTabId,
         { 
           action: "EXTRACT_ALL_DATA", 
-          username: currentDetectedUsername
+          username: currentDetectedUsername,
+          targetMode: currentTargetMode
         },
         async (response) => {
           if (chrome.runtime.lastError) {
@@ -128,10 +147,15 @@ function setupEventListeners() {
 
           // Send extracted data to local backend
           try {
+            const payload = {
+              ...response.data,
+              target_mode: currentTargetMode
+            };
+
             const backendRes = await fetch(`${BACKEND_URL}/api/extension/import`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(response.data)
+              body: JSON.stringify(payload)
             });
 
             if (!backendRes.ok) {
