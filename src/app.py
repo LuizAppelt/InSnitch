@@ -18,6 +18,7 @@ from src.database import (
     save_snapshot,
     get_snapshots_for_profile,
     get_latest_two_snapshots,
+    get_snapshot_users,
     save_ai_report,
     get_latest_ai_report,
     set_setting,
