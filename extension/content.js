@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - Runs inside Instagram Web tab
+// InSnitch Content Script - Runs inside Instagram Web tab
 console.log("[InSnitch] Content script ativo na aba do Instagram.");
 
 // Helper to get cookie by name in browser context
@@ -112,7 +112,10 @@ async function fetchUserList(userId, type = "followers", onProgress) {
 
   // Up to 200 pages (~10,000 users)
   for (let page = 0; page < 200; page++) {
-    let url = `/api/v1/friendships/${userId}/${type}/?count=50`;
+    let url = type === "followers" 
+      ? `/api/v1/friendships/${userId}/followers/?count=50&search_surface=follow_list_page`
+      : `/api/v1/friendships/${userId}/following/?count=50`;
+
     if (maxId) {
       url += `&max_id=${encodeURIComponent(maxId)}`;
     }
@@ -141,6 +144,7 @@ async function fetchUserList(userId, type = "followers", onProgress) {
 
       if (res.ok) {
         const text = await res.text();
+        console.log(`[InSnitch] Resposta REST ${type} (página ${page + 1}):`, text.substring(0, 100));
         if (text.startsWith("{")) {
           const data = JSON.parse(text);
           pageUsers = data.users || [];
@@ -148,24 +152,45 @@ async function fetchUserList(userId, type = "followers", onProgress) {
         }
       }
 
-      // Fallback: GraphQL query if REST returned HTML or non-200
+      // Rota Alternativa 1: REST sem search_surface se retornou vazio
+      if (pageUsers.length === 0 && type === "followers") {
+        const altUrl = `/api/v1/friendships/${userId}/followers/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`;
+        const altRes = await fetch(altUrl, { headers, credentials: 'include' });
+        if (altRes.ok) {
+          const altText = await altRes.text();
+          if (altText.startsWith("{")) {
+            const altData = JSON.parse(altText);
+            pageUsers = altData.users || [];
+            nextCursor = altData.next_max_id;
+          }
+        }
+      }
+
+      // Rota Alternativa 2: GraphQL Nativo
       if (pageUsers.length === 0 && !nextCursor) {
         console.warn(`[InSnitch] REST não retornou dados (${res.status}), usando GraphQL para ${type}...`);
         const queryHash = type === "followers" ? "58712303d941c6855d4e888c5f0cd22f" : "37479f2b8209594dde7ffb0d41ac5177";
-        const variables = JSON.stringify({ id: userId, first: 50, after: maxId || "" });
+        const varsObj = { id: userId, first: 50 };
+        if (maxId) varsObj.after = maxId;
+        const variables = JSON.stringify(varsObj);
         const gqlUrl = `/graphql/query/?query_hash=${queryHash}&variables=${encodeURIComponent(variables)}`;
+        
         const gqlRes = await fetch(gqlUrl, { headers, credentials: 'include' });
         if (gqlRes.ok) {
-          const gqlData = await gqlRes.json();
-          const edge = type === "followers" ? gqlData?.data?.user?.edge_followed_by : gqlData?.data?.user?.edge_follow;
-          const edges = edge?.edges || [];
-          pageUsers = edges.map(e => ({
-            username: e.node?.username,
-            full_name: e.node?.full_name || "",
-            profile_pic_url: e.node?.profile_pic_url || "",
-            is_verified: e.node?.is_verified || false
-          }));
-          nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
+          const gqlText = await gqlRes.text();
+          console.log(`[InSnitch] Resposta GraphQL ${type}:`, gqlText.substring(0, 100));
+          if (gqlText.startsWith("{")) {
+            const gqlData = JSON.parse(gqlText);
+            const edge = type === "followers" ? gqlData?.data?.user?.edge_followed_by : gqlData?.data?.user?.edge_follow;
+            const edges = edge?.edges || [];
+            pageUsers = edges.map(e => ({
+              username: e.node?.username,
+              full_name: e.node?.full_name || "",
+              profile_pic_url: e.node?.profile_pic_url || "",
+              is_verified: e.node?.is_verified || false
+            }));
+            nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
+          }
         }
       }
 
