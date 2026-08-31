@@ -1,4 +1,4 @@
-﻿// InSnitch Content Script - Runs inside Instagram Web tab
+﻿// InSnitch Content Script - Smart Multi-Route Cascade Collector
 console.log("[InSnitch] Content script ativo na aba do Instagram.");
 
 // Helper to get cookie by name in browser context
@@ -18,7 +18,6 @@ function getCurrentPageUsername() {
 
 // Extract profile details from DOM or internal API
 async function extractProfileInfo(username) {
-  // Try fetching via internal endpoint with browser cookies
   try {
     const csrf = getCookie('csrftoken') || '';
     const headers = {
@@ -81,10 +80,96 @@ async function extractProfileInfo(username) {
   };
 }
 
-// Fetch user list (followers or following) with pagination
+// Smart Multi-Route Cascade Fetcher for Single Page
+async function fetchPageWithCascade(userId, type, maxId, headers) {
+  const routes = [
+    {
+      name: "Rota 1 (REST Oficial com Superfície de Busca)",
+      url: `/api/v1/friendships/${userId}/${type}/?count=50${type === 'followers' ? '&search_surface=follow_list_page' : ''}${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`,
+      kind: "rest"
+    },
+    {
+      name: "Rota 2 (REST Nativa i.instagram.com)",
+      url: `https://i.instagram.com/api/v1/friendships/${userId}/${type}/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`,
+      kind: "rest"
+    },
+    {
+      name: "Rota 3 (REST Pura Direta)",
+      url: `/api/v1/friendships/${userId}/${type}/?count=50${maxId ? `&max_id=${encodeURIComponent(maxId)}` : ''}`,
+      kind: "rest"
+    },
+    {
+      name: "Rota 4 (GraphQL Nativo do Instagram Web)",
+      url: (() => {
+        const queryHash = type === "followers" ? "58712303d941c6855d4e888c5f0cd22f" : "37479f2b8209594dde7ffb0d41ac5177";
+        const varsObj = { id: userId, first: 50 };
+        if (maxId) varsObj.after = maxId;
+        return `/graphql/query/?query_hash=${queryHash}&variables=${encodeURIComponent(JSON.stringify(varsObj))}`;
+      })(),
+      kind: "graphql"
+    }
+  ];
+
+  for (const route of routes) {
+    try {
+      console.log(`[InSnitch] Testando ${route.name} para ${type}...`);
+      const res = await fetch(route.url, {
+        headers: {
+          ...headers,
+          'User-Agent': navigator.userAgent
+        },
+        credentials: 'include'
+      });
+
+      if (!res.ok) {
+        console.warn(`[InSnitch] ${route.name} respondeu com HTTP ${res.status}`);
+        continue;
+      }
+
+      const text = await res.text();
+      if (!text.startsWith("{")) {
+        console.warn(`[InSnitch] ${route.name} retornou HTML em vez de JSON.`);
+        continue;
+      }
+
+      const data = JSON.parse(text);
+      let pageUsers = [];
+      let nextCursor = null;
+
+      if (route.kind === "rest") {
+        pageUsers = data.users || [];
+        nextCursor = data.next_max_id;
+      } else if (route.kind === "graphql") {
+        const edge = type === "followers" ? data?.data?.user?.edge_followed_by : data?.data?.user?.edge_follow;
+        const edges = edge?.edges || [];
+        pageUsers = edges.map(e => ({
+          username: e.node?.username,
+          full_name: e.node?.full_name || "",
+          profile_pic_url: e.node?.profile_pic_url || "",
+          is_verified: e.node?.is_verified || false
+        }));
+        nextCursor = edge?.page_info?.has_next_page ? edge?.page_info?.end_cursor : null;
+      }
+
+      if (pageUsers.length > 0) {
+        console.log(`[InSnitch] ✓ ${route.name} respondeu com sucesso! (${pageUsers.length} usuários obtidos)`);
+        return { success: true, users: pageUsers, nextCursor: nextCursor };
+      } else {
+        console.warn(`[InSnitch] ${route.name} retornou lista vazia de usuários.`);
+      }
+    } catch (err) {
+      console.warn(`[InSnitch] Erro ao tentar ${route.name}:`, err);
+    }
+  }
+
+  return { success: false, users: [], nextCursor: null };
+}
+
+// Fetch user list (followers or following) with multi-route cascade
 async function fetchUserList(userId, type = "followers", onProgress) {
   const users = [];
   const seen = new Set();
+  const seenCursors = new Set();
   let maxId = null;
   const csrf = getCookie('csrftoken') || '';
 
@@ -96,69 +181,42 @@ async function fetchUserList(userId, type = "followers", onProgress) {
   };
   if (csrf) headers['x-csrftoken'] = csrf;
 
+  console.log(`[InSnitch] Iniciando extração em cascata para ${type} (User ID: ${userId})...`);
+
   // Up to 200 pages (~10,000 users)
   for (let page = 0; page < 200; page++) {
-    // Direct i.instagram.com API endpoint
-    let url = `https://i.instagram.com/api/v1/friendships/${userId}/${type}/?count=50`;
-    if (maxId) {
-      url += `&max_id=${encodeURIComponent(maxId)}`;
-    }
+    const result = await fetchPageWithCascade(userId, type, maxId, headers);
 
-    try {
-      let res = await fetch(url, {
-        headers: {
-          ...headers,
-          'User-Agent': navigator.userAgent
-        },
-        credentials: 'include'
-      });
-
-      // Fallback to relative endpoint if i.instagram.com is blocked
-      if (!res.ok) {
-        let relUrl = `/api/v1/friendships/${userId}/${type}/?count=50`;
-        if (maxId) relUrl += `&max_id=${encodeURIComponent(maxId)}`;
-        res = await fetch(relUrl, {
-          headers: { ...headers, 'User-Agent': navigator.userAgent },
-          credentials: 'include'
-        });
-      }
-
-      if (!res.ok) {
-        console.warn(`[InSnitch] Status ${res.status} ao coletar ${type}`);
-        break;
-      }
-
-      const data = await res.json();
-      const pageUsers = data.users || [];
-
-      for (const u of pageUsers) {
-        const clean = (u.username || "").toLowerCase().trim();
-        if (!clean || seen.has(clean)) continue;
-        seen.add(clean);
-
-        users.push({
-          username: u.username,
-          full_name: u.full_name || "",
-          profile_pic_url: u.profile_pic_url || "",
-          is_verified: u.is_verified || false
-        });
-      }
-
-      if (onProgress) {
-        onProgress(type, users.length);
-      }
-
-      maxId = data.next_max_id;
-      if (!maxId || pageUsers.length === 0) {
-        break;
-      }
-
-      // Small delay between pages
-      await new Promise(r => setTimeout(r, 300));
-    } catch (err) {
-      console.error(`[InSnitch] Erro ao paginar ${type}:`, err);
+    if (!result.success || result.users.length === 0) {
+      console.log(`[InSnitch] Fim da paginação de ${type}. Total consolidado: ${users.length}`);
       break;
     }
+
+    for (const u of result.users) {
+      const clean = (u.username || "").toLowerCase().trim();
+      if (!clean || seen.has(clean)) continue;
+      seen.add(clean);
+
+      users.push({
+        username: u.username,
+        full_name: u.full_name || "",
+        profile_pic_url: u.profile_pic_url || "",
+        is_verified: u.is_verified || false
+      });
+    }
+
+    if (onProgress) {
+      onProgress(type, users.length);
+    }
+
+    maxId = result.nextCursor;
+    if (!maxId || seenCursors.has(maxId)) {
+      break;
+    }
+    seenCursors.add(maxId);
+
+    // Small delay between pages
+    await new Promise(r => setTimeout(r, 350));
   }
 
   return users;
