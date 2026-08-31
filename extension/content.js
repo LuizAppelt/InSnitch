@@ -283,7 +283,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // 1. Coleta de Seguidores (se modo for 'both' ou 'followers')
         if (targetMode === "both" || targetMode === "followers") {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidores..." });
+          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de SEGUIDORES..." });
           followers = await fetchUserList(profileInfo.id, "followers", (type, count) => {
             chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguidores: ${count}...` });
           });
@@ -307,9 +307,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // 2. Coleta de Seguidos (se modo for 'both' ou 'following')
         if (targetMode === "both" || targetMode === "following") {
-          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de seguidos..." });
+          chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: "Coletando lista de QUEM O PERFIL SEGUE (Seguindo)..." });
           following = await fetchUserList(profileInfo.id, "following", (type, count) => {
-            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando seguindo: ${count}...` });
+            chrome.runtime.sendMessage({ action: "UPDATE_STATUS", message: `Coletando quem o perfil segue: ${count}...` });
           });
 
           if (profileInfo.following_count > 10 && following.length === 0) {

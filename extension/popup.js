@@ -116,7 +116,13 @@ function setupEventListeners() {
     resultCard.classList.add("hidden");
     errorBox.classList.add("hidden");
     btnSync.disabled = true;
-    progressText.innerText = "Iniciando coleta...";
+    if (currentTargetMode === "following") {
+      progressText.innerText = "Iniciando coleta de quem o perfil segue (Seguindo)...";
+    } else if (currentTargetMode === "followers") {
+      progressText.innerText = "Iniciando coleta de seguidores...";
+    } else {
+      progressText.innerText = "Iniciando coleta completa...";
+    }
 
     try {
       chrome.tabs.sendMessage(
