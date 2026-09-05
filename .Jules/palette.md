@@ -1,0 +1,3 @@
+## 2024-05-19 - Keyboard Accessibility with Tailwind's focus:outline-none
+**Learning:** When using `focus:outline-none` on form elements (like `<input>` and `<select>`) to remove the default browser styling, it entirely removes the focus indicator, rendering the element inaccessible for keyboard users (who rely on `Tab` to navigate).
+**Action:** When removing default outlines in Tailwind (`focus:outline-none`), always pair it with `focus-visible` pseudo-class (e.g., `focus-visible:ring-2 focus-visible:ring-ig-primary`) to explicitly provide a focus ring only for keyboard navigation. This app specific pattern should be maintained to ensure both clean UI for mouse users and accessibility for keyboard users.

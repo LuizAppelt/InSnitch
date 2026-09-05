@@ -522,7 +522,7 @@ async def update_app_settings(req: SettingsRequest):
     if req.mock_mode_default is not None:
         set_setting("mock_mode_default", "true" if req.mock_mode_default else "false")
 
-_IMAGE_CACHE: Dict[str, Tuple[bytes, str]] = {}
+_IMAGE_CACHE: Dict[str[bytes, str]] = {}
 
 @app.get("/api/image-proxy")
 async def image_proxy(url: str = Query(...)):
