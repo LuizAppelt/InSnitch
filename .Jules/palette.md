@@ -1,0 +1,3 @@
+## 2024-05-15 - [Maintain Keyboard Accessibility with Custom Outlines]
+**Learning:** [When applying `focus:outline-none` to interactive elements (like inputs or selects) using Tailwind, it severely degrades keyboard accessibility as users lose the visual indicator of where their focus is. In this app, relying purely on mouse interactions obscures this issue for keyboard users.]
+**Action:** [Always pair `focus:outline-none` with explicit `focus-visible` styles, such as `focus-visible:ring-2 focus-visible:ring-ig-primary`, to ensure the app-specific design system provides a clear and accessible focus indicator.]
