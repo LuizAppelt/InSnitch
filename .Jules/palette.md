@@ -1,0 +1,3 @@
+## 2024-09-08 - Added custom focus rings to form elements
+**Learning:** When using `focus:outline-none` on interactive elements to remove the default browser outline, it is critical to explicitly provide an alternative visible focus indicator (like `focus-visible:ring-2 focus-visible:ring-ig-primary`) to maintain keyboard accessibility, ensuring those who navigate via keyboard still have clear visual feedback of their current position.
+**Action:** Always pair `focus:outline-none` with `focus-visible` classes (e.g., `focus-visible:ring-2`) on form controls. Also, verify that icon-only buttons have descriptive `aria-label` attributes.
