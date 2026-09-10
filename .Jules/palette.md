@@ -1,0 +1,3 @@
+## 2026-09-10 - Interactive Element Accessibility
+**Learning:** Interactive elements like select fields and inputs often rely on `focus:outline-none` for aesthetic reasons, but this completely breaks keyboard navigation visibility. It's crucial to substitute the default outline with custom focus rings (e.g., `focus-visible:ring-2 focus-visible:ring-ig-primary`) so keyboard users know which element is active.
+**Action:** Always audit `focus:outline-none` utility classes on interactive elements and pair them with `focus-visible` utility classes to ensure accessible states are maintained without compromising design.
