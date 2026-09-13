@@ -74,22 +74,22 @@
 
         <!-- Navigation Links -->
         <nav class="flex flex-col gap-1.5 font-medium text-sm">
-          <button onclick="switchMainView('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+          <button aria-label="Ir para Dashboard" onclick="switchMainView('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
             <i data-lucide="home" class="w-6 h-6"></i>
             <span class="hidden md:inline">Dashboard</span>
           </button>
           
-          <button onclick="openTrackModal()" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+          <button aria-label="Rastrear Perfil" onclick="openTrackModal()" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
             <i data-lucide="search" class="w-6 h-6"></i>
             <span class="hidden md:inline">Rastrear Perfil</span>
           </button>
 
-          <button onclick="switchMainView('history')" id="nav-history" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+          <button aria-label="Perfis Salvos" onclick="switchMainView('history')" id="nav-history" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
             <i data-lucide="users" class="w-6 h-6"></i>
             <span class="hidden md:inline">Perfis Salvos</span>
           </button>
 
-          <button onclick="switchTab('tab-ai')" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition group">
+          <button aria-label="Inteligência Gemini" onclick="switchTab('tab-ai')" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
             <div class="w-6 h-6 rounded-md flex items-center justify-center text-purple-500 group-hover:scale-110 transition">
               <i data-lucide="sparkles" class="w-5 h-5"></i>
             </div>
@@ -102,17 +102,17 @@
 
       <!-- Bottom Options (Settings & Theme) -->
       <div class="flex flex-col gap-1.5 pt-4 border-t border-ig-lightBorder dark:border-ig-darkBorder">
-        <button onclick="toggleTheme()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+        <button aria-label="Alternar tema" onclick="toggleTheme()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
           <i id="theme-icon" data-lucide="sun" class="w-6 h-6"></i>
           <span class="hidden md:inline" id="theme-text">Modo Claro</span>
         </button>
 
-        <button onclick="openExtensionModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm text-emerald-500">
+        <button aria-label="Extensão Chrome" onclick="openExtensionModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm text-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
           <i data-lucide="puzzle" class="w-6 h-6"></i>
           <span class="hidden md:inline font-semibold">Extensão Chrome</span>
         </button>
 
-        <button onclick="openSettingsModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+        <button aria-label="Configurações" onclick="openSettingsModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary">
           <i data-lucide="settings" class="w-6 h-6"></i>
           <span class="hidden md:inline">Configurações</span>
         </button>
@@ -132,7 +132,7 @@
           </div>
           <div class="flex flex-col min-w-0">
             <span class="text-[10px] text-ig-grayText uppercase tracking-wider font-bold">Perfil em Análise</span>
-            <select id="select-active-profile" onchange="switchActiveProfile(this.value)" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-xs font-semibold text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+            <select aria-label="Selecionar perfil em análise" id="select-active-profile" onchange="switchActiveProfile(this.value)" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-xs font-semibold text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
               <option value="">Carregando perfis...</option>
             </select>
           </div>
@@ -233,48 +233,48 @@
       <div id="tabs-nav-container" class="border-t border-ig-lightBorder dark:border-ig-darkBorder mt-6">
         <nav class="flex justify-start gap-3 sm:gap-6 -mt-px text-xs font-semibold uppercase tracking-wider text-ig-grayText overflow-x-auto no-scrollbar">
           
-          <button onclick="switchTab('tab-changes')" id="btn-tab-changes" class="tab-btn active flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-changes')" id="btn-tab-changes" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary active flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="zap" class="w-4 h-4 text-emerald-500"></i>
             <span>Mudanças</span>
             <span id="tab-badge-changes" class="text-[10px] bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-mutual')" id="btn-tab-mutual" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-mutual')" id="btn-tab-mutual" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="users" class="w-4 h-4 text-cyan-500"></i>
             <span>Mútuos</span>
             <span id="tab-badge-mutual" class="text-[10px] bg-cyan-500/10 text-cyan-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-not-following-back')" id="btn-tab-not-following-back" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-not-following-back')" id="btn-tab-not-following-back" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="user-x" class="w-4 h-4 text-amber-500"></i>
             <span>Não te Seguem</span>
             <span id="tab-badge-not-following" class="text-[10px] bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-fans')" id="btn-tab-fans" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-fans')" id="btn-tab-fans" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="heart" class="w-4 h-4 text-purple-500"></i>
             <span>Fãs</span>
             <span id="tab-badge-fans" class="text-[10px] bg-purple-500/10 text-purple-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-verified')" id="btn-tab-verified" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-verified')" id="btn-tab-verified" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="badge-check" class="w-4 h-4 text-blue-500"></i>
             <span>VIPs</span>
             <span id="tab-badge-verified" class="text-[10px] bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-ghosts')" id="btn-tab-ghosts" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-ghosts')" id="btn-tab-ghosts" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="ghost" class="w-4 h-4 text-zinc-400"></i>
             <span>Fantasmas</span>
             <span id="tab-badge-ghosts" class="text-[10px] bg-zinc-500/10 text-zinc-400 px-2 py-0.5 rounded-full font-bold">0</span>
           </button>
 
-          <button onclick="switchTab('tab-chart')" id="btn-tab-chart" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-chart')" id="btn-tab-chart" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="trending-up" class="w-4 h-4"></i>
             <span>Gráfico</span>
           </button>
 
-          <button onclick="switchTab('tab-ai')" id="btn-tab-ai" class="tab-btn flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
+          <button onclick="switchTab('tab-ai')" id="btn-tab-ai" class="tab-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary flex items-center gap-2 py-4 border-t-2 border-transparent hover:text-ig-darkText dark:hover:text-ig-whiteText transition whitespace-nowrap">
             <i data-lucide="sparkles" class="w-4 h-4 text-purple-500"></i>
             <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">Análise IA</span>
           </button>
@@ -306,7 +306,7 @@
 
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-ig-grayText text-[11px] whitespace-nowrap">Ver no tempo:</span>
-              <select id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none cursor-pointer">
+              <select aria-label="Selecionar varredura no tempo" id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                 <option value="all">Todas as Varreduras (Acumulado)</option>
               </select>
 
@@ -397,17 +397,17 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Pessoas que te seguem e você também segue de volta.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" aria-label="Ordenar lista" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
                 </select>
                 <input 
                   type="text" 
-                  id="search-mutual" 
+                  aria-label="Filtrar amigos mútuos" id="search-mutual"
                   placeholder="Filtrar amigos mútuos..." 
                   oninput="filterReciprocityList('mutual')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -429,17 +429,17 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Perfis que você segue, mas não retribuem o follow.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" aria-label="Ordenar lista" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
                 </select>
                 <input 
                   type="text" 
-                  id="search-not-following" 
+                  aria-label="Filtrar contas que não te seguem" id="search-not-following"
                   placeholder="Filtrar contas..." 
                   oninput="filterReciprocityList('not_following_back')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -461,17 +461,17 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Seguidores que acompanham você, mas você não segue de volta.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" aria-label="Ordenar lista" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
                 </select>
                 <input 
                   type="text" 
-                  id="search-fans" 
+                  aria-label="Filtrar fãs" id="search-fans"
                   placeholder="Filtrar fãs..." 
                   oninput="filterReciprocityList('fans')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -493,17 +493,17 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Figuras públicas, criadores e marcas com selo oficial que te seguem.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" aria-label="Ordenar lista" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
                 </select>
                 <input 
                   type="text" 
-                  id="search-verified" 
+                  aria-label="Filtrar verificados" id="search-verified"
                   placeholder="Filtrar verificados..." 
                   oninput="filterReciprocityList('verified')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -525,17 +525,17 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Contas sem foto de perfil ou perfis suspeitos de inatividade.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" aria-label="Ordenar lista" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
                 </select>
                 <input 
                   type="text" 
-                  id="search-ghosts" 
+                  aria-label="Filtrar contas fantasmas" id="search-ghosts"
                   placeholder="Filtrar contas fantasmas..." 
                   oninput="filterReciprocityList('ghosts')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -666,7 +666,7 @@
           <i data-lucide="history" class="w-5 h-5 text-ig-primary"></i>
           <span>Gerenciar Histórico de Varreduras</span>
         </div>
-        <button onclick="closeManageSnapshotsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button onclick="closeManageSnapshotsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg focus-visible:ring-2 focus-visible:ring-ig-primary focus:outline-none" aria-label="Fechar modal de gerenciamento">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -708,7 +708,7 @@
           <i data-lucide="settings" class="w-5 h-5 text-ig-primary"></i>
           <span>Configurações & Chave IA</span>
         </div>
-        <button onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg focus-visible:ring-2 focus-visible:ring-ig-primary focus:outline-none" aria-label="Fechar configurações">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -718,9 +718,9 @@
           <label class="font-semibold block mb-1">Google Gemini API Key (IA):</label>
           <input 
             type="password" 
-            id="setting-gemini-key" 
+            aria-label="Chave API do Google Gemini" id="setting-gemini-key"
             placeholder="AIzaSy..." 
-            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
+            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
           />
           <p class="text-[10px] text-ig-grayText mt-1">Usada para gerar diagnósticos e relatórios inteligentes com o Gemini.</p>
         </div>
@@ -747,7 +747,7 @@
           <i data-lucide="puzzle" class="w-5 h-5 text-emerald-500"></i>
           <span>Extensão InSnitch (Chrome / Edge)</span>
         </div>
-        <button onclick="closeExtensionModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button onclick="closeExtensionModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg focus-visible:ring-2 focus-visible:ring-ig-primary focus:outline-none" aria-label="Fechar modal de extensão">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
