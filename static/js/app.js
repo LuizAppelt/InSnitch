@@ -669,7 +669,7 @@ function renderManageSnapshotsTable() {
         <td class="py-2.5 text-center font-medium">${(s.followers_count || 0).toLocaleString()}</td>
         <td class="py-2.5 text-center font-medium">${(s.following_count || 0).toLocaleString()}</td>
         <td class="py-2.5 text-right">
-          <button onclick="confirmDeleteSnapshot(${s.id}, '${label}')" class="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition" title="Excluir varredura">
+          <button aria-label="Excluir varredura" onclick="confirmDeleteSnapshot(${s.id}, '${label}')" class="text-rose-500 hover:bg-rose-500/10 p-1.5 rounded-lg transition focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500" title="Excluir varredura">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           </button>
         </td>
