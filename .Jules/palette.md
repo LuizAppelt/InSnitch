@@ -1,0 +1,3 @@
+## 2024-09-25 - [Accessibility Issue with Tailwind's hidden utility for text]
+**Learning:** Using Tailwind CSS classes like `hidden md:inline` on button text successfully hides the text visually on small screens (mobile viewports), but it also hides the text from screen readers on those same viewports. This inadvertently turns these buttons into inaccessible icon-only buttons for mobile screen reader users.
+**Action:** When hiding descriptive text on smaller viewports, ensure that the interactive element (e.g., `<button>`) has an explicit `aria-label` attribute providing the necessary context, so it remains accessible across all screen sizes.
