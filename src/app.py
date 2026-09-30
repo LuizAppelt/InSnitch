@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
