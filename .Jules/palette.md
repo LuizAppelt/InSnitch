@@ -1,0 +1,3 @@
+## 2024-05-14 - Add ARIA Labels to Icon-Only Close Buttons
+**Learning:** Found several modal close buttons (`closeManageSnapshotsModal`, `closeSettingsModal`, `closeExtensionModal`) in `static/index.html` that only contain an icon (`data-lucide="x"`) and lack `aria-label` attributes. This is a common accessibility issue for icon-only buttons. The focus states could also be improved using custom focus rings from the memory (e.g., `focus-visible:ring-2 focus-visible:ring-ig-primary`).
+**Action:** Add `aria-label="Fechar"` (since primary language is pt-BR) and `focus-visible:ring-2 focus-visible:ring-ig-primary focus:outline-none` to these icon-only buttons.
