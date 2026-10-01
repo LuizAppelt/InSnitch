@@ -1,0 +1,3 @@
+## 2024-05-24 - Focus Outline & ARIA Labels
+**Learning:** Using `focus:outline-none` on interactive elements (like selects and inputs) removes critical keyboard navigation feedback. Additionally, responsive designs often hide text labels on smaller screens (`hidden md:inline`), leaving icon-only buttons without accessible names if `aria-label` is not explicitly provided.
+**Action:** Always add explicit custom focus rings (e.g., `focus-visible:ring-2 focus-visible:ring-ig-primary`) when removing default outlines. Consistently add descriptive `aria-label` attributes in the application's primary language (pt-BR) to buttons containing icons, especially for close buttons or responsive nav items.
