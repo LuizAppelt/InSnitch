@@ -1,0 +1,3 @@
+## 2024-05-24 - Accessibility on Responsive Text Inside Buttons
+**Learning:** Responsive utility classes like `hidden md:inline` applied to text elements inside buttons can cause the button to lose its accessible name on smaller screens (mobile devices) where the text is hidden. Screen readers rely on visible text by default if an aria-label is not provided.
+**Action:** Always add an explicit `aria-label` attribute on parent interactive elements (like `<button>`) if their child text content can be visually hidden using responsive utility classes.
