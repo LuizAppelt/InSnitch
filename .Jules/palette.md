@@ -1,0 +1,3 @@
+## 2024-03-20 - Custom Focus Rings for Tailwind Elements
+**Learning:** Elements styled with Tailwind's `focus:outline-none` disable the browser's default focus outline, making the application inaccessible for keyboard users navigating via Tab, as there's no visual indication of which element has focus.
+**Action:** When using `focus:outline-none` on interactive elements (like `<input>`, `<select>`, `<button>`), always add `focus-visible:ring-2 focus-visible:ring-ig-primary` (or an appropriate project-specific ring color class). This ensures a custom, visible focus ring appears only during keyboard navigation, preserving a clean look on mouse clicks while remaining fully accessible.
