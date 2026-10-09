@@ -102,7 +102,7 @@
 
       <!-- Bottom Options (Settings & Theme) -->
       <div class="flex flex-col gap-1.5 pt-4 border-t border-ig-lightBorder dark:border-ig-darkBorder">
-        <button onclick="toggleTheme()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+        <button aria-label="Alternar tema" onclick="toggleTheme()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
           <i id="theme-icon" data-lucide="sun" class="w-6 h-6"></i>
           <span class="hidden md:inline" id="theme-text">Modo Claro</span>
         </button>
@@ -132,7 +132,7 @@
           </div>
           <div class="flex flex-col min-w-0">
             <span class="text-[10px] text-ig-grayText uppercase tracking-wider font-bold">Perfil em Análise</span>
-            <select id="select-active-profile" onchange="switchActiveProfile(this.value)" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-xs font-semibold text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+            <select id="select-active-profile" onchange="switchActiveProfile(this.value)" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-xs font-semibold text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
               <option value="">Carregando perfis...</option>
             </select>
           </div>
@@ -306,7 +306,7 @@
 
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-ig-grayText text-[11px] whitespace-nowrap">Ver no tempo:</span>
-              <select id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none cursor-pointer">
+              <select id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                 <option value="all">Todas as Varreduras (Acumulado)</option>
               </select>
 
@@ -397,7 +397,7 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Pessoas que te seguem e você também segue de volta.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
@@ -407,7 +407,7 @@
                   id="search-mutual" 
                   placeholder="Filtrar amigos mútuos..." 
                   oninput="filterReciprocityList('mutual')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -429,7 +429,7 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Perfis que você segue, mas não retribuem o follow.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
@@ -439,7 +439,7 @@
                   id="search-not-following" 
                   placeholder="Filtrar contas..." 
                   oninput="filterReciprocityList('not_following_back')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -461,7 +461,7 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Seguidores que acompanham você, mas você não segue de volta.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
@@ -471,7 +471,7 @@
                   id="search-fans" 
                   placeholder="Filtrar fãs..." 
                   oninput="filterReciprocityList('fans')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -493,7 +493,7 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Figuras públicas, criadores e marcas com selo oficial que te seguem.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
@@ -503,7 +503,7 @@
                   id="search-verified" 
                   placeholder="Filtrar verificados..." 
                   oninput="filterReciprocityList('verified')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -525,7 +525,7 @@
                 <p class="text-xs text-ig-grayText mt-0.5">Contas sem foto de perfil ou perfis suspeitos de inatividade.</p>
               </div>
               <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary cursor-pointer">
                   <option value="recent">🕒 Mais Recentes</option>
                   <option value="alpha_asc">🔤 Nome (A → Z)</option>
                   <option value="alpha_desc">🔤 Nome (Z → A)</option>
@@ -535,7 +535,7 @@
                   id="search-ghosts" 
                   placeholder="Filtrar contas fantasmas..." 
                   oninput="filterReciprocityList('ghosts')" 
-                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
                 />
               </div>
             </div>
@@ -666,7 +666,7 @@
           <i data-lucide="history" class="w-5 h-5 text-ig-primary"></i>
           <span>Gerenciar Histórico de Varreduras</span>
         </div>
-        <button onclick="closeManageSnapshotsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button aria-label="Fechar" onclick="closeManageSnapshotsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -708,7 +708,7 @@
           <i data-lucide="settings" class="w-5 h-5 text-ig-primary"></i>
           <span>Configurações & Chave IA</span>
         </div>
-        <button onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button aria-label="Fechar" onclick="closeSettingsModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
@@ -720,7 +720,7 @@
             type="password" 
             id="setting-gemini-key" 
             placeholder="AIzaSy..." 
-            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
+            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary"
           />
           <p class="text-[10px] text-ig-grayText mt-1">Usada para gerar diagnósticos e relatórios inteligentes com o Gemini.</p>
         </div>
@@ -747,7 +747,7 @@
           <i data-lucide="puzzle" class="w-5 h-5 text-emerald-500"></i>
           <span>Extensão InSnitch (Chrome / Edge)</span>
         </div>
-        <button onclick="closeExtensionModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
+        <button aria-label="Fechar" onclick="closeExtensionModal()" class="text-ig-grayText hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
