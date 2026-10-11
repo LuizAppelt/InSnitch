@@ -1,0 +1,3 @@
+## 2024-03-22 - Accessible Focus Rings with Tailwind
+**Learning:** When using Tailwind CSS, removing default focus styles with `focus:outline-none` makes elements completely inaccessible to keyboard users unless alternative focus styles are provided. Additionally, buttons containing text that is hidden on mobile screens (e.g., via `hidden md:inline`) effectively become icon-only buttons on small screens, making them inaccessible to screen readers.
+**Action:** When styling with Tailwind, explicitly add custom focus rings (e.g., `focus-visible:ring-2 focus-visible:ring-ig-primary`) to interactive elements that use `focus:outline-none`. Always add `aria-label`s to buttons whose visible text is conditionally hidden on smaller viewports.
