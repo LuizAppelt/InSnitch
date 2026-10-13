@@ -1,0 +1,3 @@
+## 2026-10-13 - Acessibilidade de Navegação em Dispositivos Móveis
+**Learning:** Elementos de texto ocultos por utilitários de exibição responsiva do Tailwind (como `hidden md:inline`) são completamente removidos da árvore de acessibilidade em telas menores. Para botões de navegação críticos que dependem de ícones nessas telas, os usuários de leitores de tela ficam com elementos interativos sem rótulo no celular.
+**Action:** Sempre adicionar atributos `aria-label` explícitos (em português) a botões contendo texto que seja condicionalmente oculto em dispositivos móveis, garantindo acessibilidade completa em todos os tamanhos de visualização.
