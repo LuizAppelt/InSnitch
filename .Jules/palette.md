@@ -1,0 +1,3 @@
+## 2026-10-16 - Custom focus rings required for elements using focus:outline-none
+**Learning:** When styling with Tailwind in this project, explicitly add custom focus rings (e.g., 'focus-visible:ring-2 focus-visible:ring-ig-primary') to interactive elements that use 'focus:outline-none' to ensure they remain keyboard accessible. Also, add ARIA labels to icon-only buttons and elements whose text is hidden on mobile screens.
+**Action:** Replaced instances of 'focus:outline-none' with 'focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary' in static/index.html to restore visible focus states. Added 'aria-label' to sidebar navigation and modal close buttons.
