@@ -1,0 +1,3 @@
+## 2024-10-18 - Accessibility Improvements for Instagram Dashboard
+**Learning:** Found an app-specific pattern where modal close buttons lacked ARIA labels and elements hidden on mobile (`hidden md:inline`) were completely invisible to screen readers instead of using `.sr-only`. Also discovered that many interactive elements used `focus:outline-none` without providing an alternative focus ring, harming keyboard accessibility.
+**Action:** Applied ARIA labels (`aria-label="Fechar"`) to icon-only modal close buttons, updated `hidden` classes to `sr-only md:not-sr-only` to preserve screen reader accessibility on mobile, and added Tailwind focus rings (`focus-visible:ring-2 focus-visible:ring-ig-primary`) to elements that suppress default outlines.
