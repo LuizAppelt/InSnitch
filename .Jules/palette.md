@@ -1,0 +1,3 @@
+## 2024-03-05 - Accessible interactive components in Tailwind
+**Learning:** Elements using `focus:outline-none` can unintentionally break keyboard navigation for accessibility if custom focus indicators are omitted. Also, sidebar texts hidden on mobile with `hidden md:inline` make the icon-only buttons invisible to screen readers without ARIA labels.
+**Action:** Consistently replace `focus:outline-none` with `focus:outline-none focus-visible:ring-2 focus-visible:ring-ig-primary` on selects and inputs. Explicitly add `aria-label` to sidebar buttons and modal close buttons that become icon-only.
