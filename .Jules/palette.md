@@ -1,0 +1,3 @@
+## 2024-03-09 - Accessible Focus Rings on Tailwind Elements
+**Learning:** When using `focus:outline-none` on interactive elements (like `<select>` and `<input>`) to remove default browser outlines in this Tailwind project, keyboard navigation becomes invisible to users. Adding Tailwind's `focus-visible:ring-2 focus-visible:ring-ig-primary` alongside `focus:outline-none` perfectly restores the focus state specifically for keyboard users while keeping mouse interactions clean, respecting the app's existing design tokens (`ig-primary`).
+**Action:** Always append custom `focus-visible` rings when utilizing `focus:outline-none` on interactive form elements or buttons to ensure they remain accessible for keyboard navigation.
