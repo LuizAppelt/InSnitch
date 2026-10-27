@@ -1,0 +1,64 @@
+            <span class="text-[10px] text-ig-grayText uppercase tracking-wider font-bold">Perfil em Análise</span>
+            <select id="select-active-profile" onchange="switchActiveProfile(this.value)" class="bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-xs font-semibold text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+              <option value="">Carregando perfis...</option>
+            </select>
+--
+              <span class="text-ig-grayText text-[11px] whitespace-nowrap">Ver no tempo:</span>
+              <select id="select-snapshot-history" onchange="onSnapshotSelectChange(this.value)" class="bg-ig-lightCard dark:bg-ig-darkCard border border-ig-lightBorder dark:border-ig-darkBorder rounded-xl px-3 py-1.5 text-[11px] font-medium focus:outline-none cursor-pointer">
+                <option value="all">Todas as Varreduras (Acumulado)</option>
+              </select>
+--
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+--
+                  oninput="filterReciprocityList('mutual')"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+--
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+--
+                  oninput="filterReciprocityList('not_following_back')"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+--
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+--
+                  oninput="filterReciprocityList('fans')"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+--
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+--
+                  oninput="filterReciprocityList('verified')"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+--
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <select onchange="onSortOrderChange(this.value)" class="sort-select px-2.5 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder text-ig-darkText dark:text-ig-whiteText focus:outline-none cursor-pointer">
+                  <option value="recent">🕒 Mais Recentes</option>
+                  <option value="alpha_asc">🔤 Nome (A → Z)</option>
+--
+                  oninput="filterReciprocityList('ghosts')"
+                  class="w-full sm:w-48 px-3 py-1.5 text-xs rounded-lg bg-ig-lightHover dark:bg-ig-darkHover border border-transparent focus:border-ig-lightBorder dark:focus:border-ig-darkBorder focus:outline-none"
+                />
+              </div>
+--
+            placeholder="AIzaSy..."
+            class="w-full px-3 py-2.5 rounded-xl bg-ig-lightHover dark:bg-ig-darkHover border border-ig-lightBorder dark:border-ig-darkBorder focus:outline-none"
+          />
+          <p class="text-[10px] text-ig-grayText mt-1">Usada para gerar diagnósticos e relatórios inteligentes com o Gemini.</p>
