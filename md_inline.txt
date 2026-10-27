@@ -1,0 +1,40 @@
+          <button onclick="switchMainView('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+            <i data-lucide="home" class="w-6 h-6"></i>
+            <span class="hidden md:inline">Dashboard</span>
+          </button>
+
+          <button onclick="openTrackModal()" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+            <i data-lucide="search" class="w-6 h-6"></i>
+            <span class="hidden md:inline">Rastrear Perfil</span>
+          </button>
+
+          <button onclick="switchMainView('history')" id="nav-history" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition">
+            <i data-lucide="users" class="w-6 h-6"></i>
+            <span class="hidden md:inline">Perfis Salvos</span>
+          </button>
+
+          <button onclick="switchTab('tab-ai')" class="nav-item flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition group">
+--
+              <i data-lucide="sparkles" class="w-5 h-5"></i>
+            </div>
+            <span class="hidden md:inline bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent font-semibold">
+              Inteligência Gemini
+            </span>
+          </button>
+--
+        <button onclick="toggleTheme()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+          <i id="theme-icon" data-lucide="sun" class="w-6 h-6"></i>
+          <span class="hidden md:inline" id="theme-text">Modo Claro</span>
+        </button>
+
+        <button onclick="openExtensionModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm text-emerald-500">
+          <i data-lucide="puzzle" class="w-6 h-6"></i>
+          <span class="hidden md:inline font-semibold">Extensão Chrome</span>
+        </button>
+
+        <button onclick="openSettingsModal()" class="flex items-center gap-4 px-3 py-3 rounded-xl hover:bg-ig-lightHover dark:hover:bg-ig-darkHover transition text-sm">
+          <i data-lucide="settings" class="w-6 h-6"></i>
+          <span class="hidden md:inline">Configurações</span>
+        </button>
+      </div>
+    </aside>
