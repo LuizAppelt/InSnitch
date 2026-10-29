@@ -1,0 +1,3 @@
+## 2024-03-22 - Missing Focus Indicators and ARIA Labels
+**Learning:** Found an accessibility issue pattern specific to this app: inputs/selects use `focus:outline-none` without providing an alternative focus indicator, breaking keyboard navigation visibility. Additionally, several modal close buttons containing only icons lack `aria-label` attributes.
+**Action:** When styling with Tailwind in this project, explicitly add custom focus rings (e.g., `focus-visible:ring-2 focus-visible:ring-ig-primary`) to interactive elements that use `focus:outline-none`. Always add `aria-label` attributes to icon-only buttons for screen reader support.
