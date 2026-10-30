@@ -1,0 +1,3 @@
+## 2024-05-17 - Acessibilidade em Modais e Navegação por Teclado
+**Learning:** Elementos interativos no InSnitch frequentemente utilizam `focus:outline-none` para remover a borda de foco padrão dos navegadores em mouse clicks, o que prejudica severamente a navegação por teclado. Além disso, botões de fechar modais usando apenas ícones (`<i data-lucide="x">`) estavam sem rótulos acessíveis.
+**Action:** Aplicar sempre `focus-visible:ring-2 focus-visible:ring-ig-primary` junto com `focus:outline-none` para restaurar o estado de foco visual apenas para usuários de teclado. Para botões compostos apenas por ícones sem texto visível adjacente, adicionar o atributo `aria-label="Fechar"`.
