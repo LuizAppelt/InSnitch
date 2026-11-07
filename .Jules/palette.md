@@ -1,0 +1,3 @@
+## 2026-11-07 - Accessible Icon Buttons & Mobile Text Hiding
+**Learning:** In Instagram-like responsive sidebars, conditionally hiding text with 'display: none' ('hidden md:inline') removes the accessible name for mobile screen reader users. Simply adding 'aria-label' to the button duplicates text for desktop users, violating WCAG 2.5.3 (Label in Name).
+**Action:** Used Tailwind's 'sr-only md:not-sr-only md:inline' classes to visually hide text on mobile while keeping it in the accessible tree, and added custom focus rings ('focus:outline-none focus-visible:ring-2') along with 'aria-label' explicitly to true icon-only buttons (like modal close buttons).
